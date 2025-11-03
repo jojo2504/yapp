@@ -56,7 +56,7 @@ To start Judge/Database server :
   - start the containers
 
 > [!Important]
-You can also run `docker-compose up` to start all componants at once.
+You can also run `docker-compose up` to start all componants at once. Don't forget to have your .env file set up by removing or adding a new file `.env` with the right fields.
  
 ## Roadmap
 
