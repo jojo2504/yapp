@@ -1,0 +1,37 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: .dockerfile
+    ports:
+      - "5173:5173"
+
+  backend-go:
+    build:
+      context: ./backend
+      dockerfile: .dockerfile
+
+  rust-judge:
+    build:
+      context: ./judge
+      dockerfile: .dockerfile
+
+  redis:
+    image: redis
+    volumes:
+      - redis-data:/data
+
+  postgres:
+    image: postgres
+    env_file: "webapp.env"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /data/postgres
+      POSTGRES_DB: database
+    volumes:
+      - postgres-data:/data/postgres
+
+volumes:
+  redis-data:
+  postgres-data:
