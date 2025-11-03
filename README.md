@@ -11,6 +11,53 @@
 [![Postgres](https://img.shields.io/badge/Postgres-%23316192.svg?logo=postgresql&logoColor=white)](#)
 [![Redis](https://img.shields.io/badge/Redis-DC382D.svg?logo=redis&logoColor=white)](#)
 
+## How does it works ?
+The system is made up of **four major parts**, all working together:
+
+1. **Frontend (React)** — What students and teachers interact with  
+2. **Backend API (Go)** — The main brain and controller of all data  
+3. **Judge System (Rust)** — Securely runs and grades submitted code  
+4. **Infrastructure (PostgreSQL, Redis, Docker, OS)** — The foundation holding it all together  
+
+> [!Note]
+["See more here"](/docs/system_overview.md)
+
+## Getting Started
+
+Start downloading the tools belows:
+- **Node.js** `v25.1.0`
+  - https://nodejs.org/en/download
+- **Go** `1.25.3`
+  - https://go.dev/doc/install
+- **Docker**
+  - [Direct link](https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe?utm_source=docker&utm_medium=webreferral&utm_campaign=dd-smartbutton&utm_location=module)
+- **Rust** `x86_64-pc-windows-gnu`
+  - https://forge.rust-lang.org/infra/other-installation-methods.html
+
+To start Node.js server :
+```bash
+cd ./frontend
+npm run dev
+```
+
+To start Go server :
+```bash
+cd ./backend
+go run .
+```
+
+To start Judge/Database server :
+
+- Rust:
+  ```bash
+  cargo run
+  ```
+- Postgres/Redis:
+  - start the containers
+
+> [!Important]
+You can also run `docker-compose up` to start all componants at once.
+ 
 ## Roadmap
 
 ### Q4 2025
