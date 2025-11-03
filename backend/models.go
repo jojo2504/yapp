@@ -36,7 +36,7 @@ type Organisation struct {
 	Localisation string `json:"localisation"`
 }
 
-// ─── Problems, Sets, Difficulty ───────────────────────────────────────────────
+// ─── Problems, Language, Sets, Difficulty ─────────────────────────────────────
 // ? Stored in Postgres
 
 type Difficulty string
@@ -47,11 +47,27 @@ const (
 	Hard   Difficulty = "hard"
 )
 
+type Language string
+
+const (
+	Python     Language = "Python"
+	Rust       Language = "Rust"
+	Csharp     Language = "Csharp"
+	C          Language = "C"
+	Cpp        Language = "Cpp"
+	Javascript Language = "Javascript"
+	Typescript Language = "Typescript"
+	Go         Language = "Go"
+	Java       Language = "Java"
+	Swift      Language = "Swift"
+)
+
 type Problem struct {
 	BaseModel
 
 	Title       string        `json:"title"`
 	Description string        `json:"description"`
+	Language    Language      `json:"language"`
 	ProblemSets []*ProblemSet `json:"problem_sets" pg:"many2many:problem_problem_sets"`
 	Difficulty  Difficulty    `json:"difficulty_id"`
 	TimeLimit   int           `json:"time_limit_ms,omitempty"`   // default 2000
@@ -112,23 +128,8 @@ const (
 	VerdictInternalError       Verdict = "InternalError"
 )
 
-// ─── Language, Submissions, Results ────────────────────────────────
+// ─── Submissions, Results ────────────────────────────────
 // ! Not stored in databases
-
-type Language string
-
-const (
-	Python     Language = "Python"
-	Rust       Language = "Rust"
-	Csharp     Language = "Csharp"
-	C          Language = "C"
-	Cpp        Language = "Cpp"
-	Javascript Language = "Javascript"
-	Typescript Language = "Typescript"
-	Go         Language = "Go"
-	Java       Language = "Java"
-	Swift      Language = "Swift"
-)
 
 type Submission struct {
 	BaseModel
