@@ -1,13 +1,12 @@
 FROM node:25-bookworm-slim
 
-USER root
-
 WORKDIR /app
 
-COPY . .
+# Copy package files first for dependency caching
+COPY package*.json ./
 
-# https://stackoverflow.com/questions/36155072/disable-npm-cache
-RUN npm install --force
+# Install dependencies
+RUN npm install
 
 EXPOSE 5173
 
