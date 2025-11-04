@@ -20,19 +20,24 @@ The system is made up of **four major parts**, all working together:
 4. **Infrastructure (PostgreSQL, Redis, Docker, OS)** — The foundation holding it all together  
 
 > [!Note]
-["See more here"](/docs/system_overview.md)
+[See more here](/docs/system_overview.md)
 
 ## Getting Started
+
+> [!Important]
+You can also run `docker-compose up` to start all componants at once without needing to install anything else. Don't forget to have your .env file set up by removing or adding a new file `.env` with the right fields.
 
 Start downloading the tools belows:
 - **Node.js** `v25.1.0`
   - https://nodejs.org/en/download
 - **Go** `1.25.3`
   - https://go.dev/doc/install
-- **Docker**
+  - for hot reloading : https://github.com/air-verse/air
+- **Docker - Important !**
   - [Direct link](https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe?utm_source=docker&utm_medium=webreferral&utm_campaign=dd-smartbutton&utm_location=module)
 - **Rust** `x86_64-pc-windows-gnu`
   - https://forge.rust-lang.org/infra/other-installation-methods.html
+  - for hot reloading : https://crates.io/crates/cargo-watch
 
 To start Node.js server :
 ```bash
@@ -54,10 +59,7 @@ To start Judge/Database server :
   ```
 - Postgres/Redis:
   - start the containers
-
-> [!Important]
-You can also run `docker-compose up` to start all componants at once. Don't forget to have your .env file set up by removing or adding a new file `.env` with the right fields.
- 
+    
 ## Roadmap
 
 ### Q4 2025
