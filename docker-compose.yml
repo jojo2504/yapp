@@ -5,16 +5,27 @@ services:
       dockerfile: .dockerfile
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
   backend-go:
     build:
       context: ./backend
       dockerfile: .dockerfile
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8080:8080"
 
   rust-judge:
     build:
       context: ./judge
       dockerfile: .dockerfile
+    volumes:
+      - ./judge:/judge
+      - rust-target:/judge/target
+    stop_grace_period: 3s # Workaround for the cargo watch signals taking 10s to stop
 
   redis:
     image: redis
@@ -23,7 +34,7 @@ services:
 
   postgres:
     image: postgres
-    env_file: "webapp.env"
+    env_file: ".env"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -35,3 +46,4 @@ services:
 volumes:
   redis-data:
   postgres-data:
+  rust-target:
