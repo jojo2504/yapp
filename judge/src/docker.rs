@@ -1,0 +1,140 @@
+use std::{fs::{self, File}, io::Write, path::PathBuf, time::Duration};
+
+use bollard::{Docker, container::LogOutput, query_parameters::{CreateContainerOptionsBuilder, LogsOptions, RemoveContainerOptions, StartContainerOptions, WaitContainerOptions}, secret::{ContainerCreateBody, ContainerWaitResponse}};
+use tokio::time::timeout;
+use futures_util::stream::StreamExt;
+
+use crate::{models::Submission};
+
+#[derive(Default, Clone, Debug)]
+pub struct Output {
+    pub stdout_buf: Option<Vec<String>>,
+    pub stderr_buf: Option<Vec<String>>,
+    pub exit_code: Option<u8>
+}
+
+#[derive(Clone)]
+pub struct DockerClient {
+    docker: Docker,
+    output: Output
+}
+
+impl DockerClient {
+    pub fn new_local_defaults() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            docker: Docker::connect_with_local_defaults().unwrap(),
+            output: Output::default()
+        })
+    }
+
+    pub fn from(docker: Docker) -> Self {
+        Self { 
+            docker: docker,
+            output: Output::default()
+        }
+    }
+
+    pub async fn create_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error>> {
+        let mut file = File::create("/shared/main.rs")?;
+        file.write_all(&submission.source_code.as_bytes())?;
+        file.flush()?;
+
+        let params = CreateContainerOptionsBuilder::new()
+        .name(container_name)
+        .build();
+
+        let config = ContainerCreateBody {
+            image: Some("sandbox-rust".to_string()),
+            cmd: Some(vec!["timeout 2 rustc main.rs && ./main".to_string()]),
+            host_config: Some(bollard::models::HostConfig {
+                network_mode: Some("none".to_string()),
+                memory: Some(100000000),
+                memory_swap: Some(100000000),
+                pids_limit: Some(50),
+                cap_drop: Some(vec!["ALL".to_string()]),
+                binds: Some(vec![
+                    "shared:/sandbox".to_string(),
+                ]),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        self.docker.create_container(Some(params), config).await?;
+
+        println!("created container");
+        Ok(())
+
+    }
+
+    pub async fn start_container(&mut self, container_name: &str) -> Result<Output, Box<dyn std::error::Error>> {
+        let run_future = async {
+            let _ = self.docker.start_container(container_name, None::<StartContainerOptions>).await;
+
+            // logs
+            let options = LogsOptions {
+                stdout: true,
+                stderr: true,
+                follow: true,
+                ..Default::default()
+            };
+
+            let mut logs = self.docker.logs(container_name, Some(options));
+            while let Some(log_result) = logs.next().await {
+                match log_result {
+                    Ok(output) => match output {
+                        LogOutput::StdOut { message } => {
+                            let s = String::from_utf8_lossy(&message).to_string();
+                            if let Some(ref mut buf) = self.output.stdout_buf {
+                                buf.push(s);
+                            } else {
+                                self.output.stdout_buf = Some(vec![s]);
+                            }
+                        }
+                        LogOutput::StdErr { message } => {
+                            let s = String::from_utf8_lossy(&message).to_string();
+                            if let Some(ref mut buf) = self.output.stderr_buf {
+                                buf.push(s);
+                            } else {
+                                self.output.stderr_buf = Some(vec![s]);
+                            }
+                        }
+                        _ => {}
+                    },
+                    Err(e) => eprintln!("Log error: {}", e),
+                }
+            }
+
+            // wait for completion and get exit code
+            let mut wait_stream = self.docker.wait_container(
+                container_name,
+                Some(WaitContainerOptions {
+                    condition: "not-running".to_string(),
+                }),
+            );
+
+            while let Some(Ok(ContainerWaitResponse { status_code, .. })) = wait_stream.next().await {
+                self.output.exit_code = Some(status_code as u8);
+                println!("Container exited with code: {}", status_code);
+            }
+        };
+
+        match timeout(Duration::from_secs(4), run_future).await {
+            Ok(_) => println!("finished within 1 sec"),
+            Err(_) => panic!("Time Limit Exceeded"),
+        }
+
+        Ok(self.output.clone())
+
+    }
+
+    pub async fn stop_container(&self, container_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        todo!()
+    }
+
+    pub async fn delete_container(&self, container_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // println!("deleting container {}", container_name);
+        self.docker.remove_container(container_name, Some(RemoveContainerOptions::default())).await?;
+
+        Ok(())
+    }
+}
