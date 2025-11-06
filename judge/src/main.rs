@@ -1,11 +1,12 @@
-mod models;
 mod docker;
+mod models;
 
-use std::num::NonZero;
+use std::{num::NonZero, pin::Pin};
 
+use futures_util::future::ok;
 use redis::{Commands, Connection};
-use bollard::Docker;
-use tempfile::NamedTempFile;
+use std::sync::Arc;
+use tokio::sync::Semaphore;
 
 use crate::{docker::DockerClient, models::Submission};
 
@@ -30,26 +31,19 @@ fn retrieve_submission(connection: &mut Connection) -> redis::RedisResult<Option
     Ok(None)
 }
 
-// fn see_all(connection: &mut Connection) -> redis::RedisResult<()> {
-//     let strings: Vec<String> = connection.lrange("queue", 0, -1)?;
-//     for string in &strings {
-//         println!("{}\n", string);
-//     }
-//     Ok(())
-// }
-
 async fn redis_listener<F>(connection: &mut Connection, mut handler: F) -> redis::RedisResult<()>
 where
-    F: FnMut(Submission) + Send,
+    F: FnMut(Submission, Arc<Semaphore>)
 {
+    let semaphore = Arc::new(Semaphore::new(100));
     loop {
         if connection.exists("queue")? {
             if let Some(submission) = retrieve_submission(connection)? {
-                // println!("found submission");
-                handler(submission);
+                let semaphore = Arc::clone(&semaphore);
+
+                handler(submission, semaphore);
             }
-        }
-        else {
+        } else {
             // println!("no submission");
         }
         tokio::time::sleep(std::time::Duration::from_millis(1)).await; // avoid redis query spam
@@ -64,42 +58,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let docker_client = DockerClient::new_local_defaults()?;
 
     clear_all(&mut connection)?;
-    tokio::spawn(async move {
-        let _ = redis_listener(&mut connection_for_listener, move |submission| {
+    let _ = tokio::spawn(async move {
+        let _ = redis_listener(&mut connection_for_listener, move |submission: Submission, semaphore: Arc<Semaphore>| {
             let mut docker_client_clone = docker_client.clone();
 
-            tokio::spawn(async move {
-                
+            let _ = tokio::spawn(async move {
+                let _permit = semaphore.acquire().await.unwrap();
                 let container_name = format!("rust_sandbox_{}", submission.id);
-                // println!("preparing evaluation for container: {}", container_name);
-
-                // Perform async Docker operations here
+                
                 if let Err(e) = docker_client_clone.create_container(&container_name, &submission).await {
                     eprintln!("create_container error: {:?}", e);
                     docker_client_clone.delete_container(&container_name).await.ok();
                 }
 
-                if let Ok(output) = docker_client_clone.start_container(&container_name).await {
-                    // println!("{:#?}", output.stdout_buf);
-                    // println!("{:#?}", output.stderr_buf);
-                    // println!("{:#?}", output.exit_code);
-                }
-
-                if let Err(e) = docker_client_clone.delete_container(&container_name).await {
-                    eprintln!("delete_container error: {:?}", e);
-                }
+                let output = docker_client_clone.start_container(&container_name).await.ok();
+                docker_client_clone.delete_container(&container_name).await.ok();
             });
         })
         .await;
     });
 
-    for i in 0..200 {
+    for i in 0..1000 {
         let source_code = r#"
             fn main() {
                 println!("a");
             }
         "#;
-        let submission = Submission::new(i, 1, 1, models::Language::Python, source_code.to_string());
+        let submission =
+            Submission::new(i, 1, 1, models::Language::Python, source_code.to_string());
         add_submission(&mut connection, &submission)?;
     }
 
