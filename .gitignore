@@ -1,3 +1,4 @@
 target/
 backend/tmp
 .env
+.vscode

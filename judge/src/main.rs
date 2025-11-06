@@ -92,11 +92,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
     });
 
-    for i in 0..1000 {
+    for i in 0..100 {
         let source_code = r#"
-fn main() {
-    println!("a");
-}
+            fn main() {
+                println!("a");
+            }
         "#;
         let submission = Submission::new(i, 1, 1, models::Language::Python, source_code.to_string());
         add_submission(&mut connection, &submission)?;
