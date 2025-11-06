@@ -45,7 +45,7 @@ where
     loop {
         if connection.exists("queue")? {
             if let Some(submission) = retrieve_submission(connection)? {
-                println!("found submission");
+                // println!("found submission");
                 handler(submission);
             }
         }
@@ -76,6 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Perform async Docker operations here
                 if let Err(e) = docker_client_clone.create_container(&container_name, &submission).await {
                     eprintln!("create_container error: {:?}", e);
+                    docker_client_clone.delete_container(&container_name).await.ok();
                 }
 
                 if let Ok(output) = docker_client_clone.start_container(&container_name).await {
@@ -92,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
     });
 
-    for i in 0..100 {
+    for i in 0..200 {
         let source_code = r#"
             fn main() {
                 println!("a");
