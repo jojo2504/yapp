@@ -33,7 +33,11 @@ impl DockerClient {
 
     pub async fn create_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let filename = format!("/shared/{}.rs", container_name);
-        fs::write(&filename, &submission.source_code)?;
+        let mut file = File::create(&filename)?;
+        file.write_all(&submission.source_code.as_bytes())?;
+        file.flush()?;
+
+        println!("AAAAAAAAAAAAAAAAAAAAAAA: {}", &filename);
 
         let params = CreateContainerOptionsBuilder::new()
         .name(container_name)
