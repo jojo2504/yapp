@@ -63,7 +63,7 @@ To start Judge/Database server :
 ## Roadmap
 
 ### Q4 2025
-- [ ] Set project template and clear roadmaps
+- [X] Set project template and clear roadmaps
 - [ ] Create API documentation
 - [ ] Set up CI/CD pipeline
 - [ ] Basic backend prototype
