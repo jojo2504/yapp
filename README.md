@@ -63,14 +63,14 @@ To start Judge/Database server :
 ## Implemented Languages
 - [x] Python
 - [x] Rust
-- [] Csharp
+- [ ] Csharp
 - [x] C
-- [] Cpp
+- [ ] Cpp
 - [x] Javascript
-- [] Typescript
+- [ ] Typescript
 - [x] Go
-- [] Java
-- [] Swift
+- [ ] Java
+- [ ] Swift
 
 ## Roadmap
 
