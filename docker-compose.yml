@@ -37,6 +37,19 @@ services:
     depends_on:
       - backend-go
 
+  rust-test:
+    build:
+      context: ./judge
+      dockerfile: .dockerfile
+    command: cargo test -- --nocapture
+    volumes:
+      - ./judge:/judge
+      - rust-target:/judge/target
+      - /var/run/docker.sock:/var/run/docker.sock
+      - shared:/shared
+    depends_on:
+      - backend-go
+
   redis:
     image: redis
     volumes:

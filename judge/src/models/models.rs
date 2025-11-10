@@ -1,4 +1,13 @@
+use std::fmt;
+
 use serde::{Serialize, Deserialize};
+
+#[derive(Default, Clone, Debug)]
+pub struct Output {
+    pub stdout_buf: Option<Vec<String>>,
+    pub stderr_buf: Option<Vec<String>>,
+    pub exit_code: Option<u8>
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Language {
@@ -12,6 +21,12 @@ pub enum Language {
     Go,
     Java,
     Swift,
+}
+
+impl fmt::Display for Language {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

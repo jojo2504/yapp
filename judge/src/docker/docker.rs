@@ -4,14 +4,7 @@ use bollard::{Docker, container::LogOutput, query_parameters::{CreateContainerOp
 use tokio::time::timeout;
 use futures_util::stream::StreamExt;
 
-use crate::{models::Submission};
-
-#[derive(Default, Clone, Debug)]
-pub struct Output {
-    pub stdout_buf: Option<Vec<String>>,
-    pub stderr_buf: Option<Vec<String>>,
-    pub exit_code: Option<u8>
-}
+use crate::models::{Output, Submission};
 
 #[derive(Clone)]
 pub struct DockerClient {
@@ -32,25 +25,51 @@ impl DockerClient {
     }
 
     pub async fn create_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let filename = format!("/shared/{}.rs", container_name);
+        let (image_name, filename, cmd): (String, String, String) = match submission.language {
+            crate::models::Language::Python => (
+                String::from("python-sandbox"), format!("/shared/{}.py", container_name), format!("python {}.py", container_name)
+            ),
+            crate::models::Language::Rust => (
+                String::from("rust-sandbox"), format!("/shared/{}.rs", container_name), format!("rustc {}.rs && ./{}", container_name, container_name)
+            ),
+            // crate::models::Language::Csharp => (
+            //     String::from("dotnet-sdk-sandbox"), format!("/shared/{}.cs", container_name), format!("dotnet run")
+            // ),
+            crate::models::Language::C => (
+                String::from("gcc-sandbox"), format!("/shared/{}.c", container_name), format!("gcc {}.c -o {0} && ./{0}", container_name)
+            ),
+            // crate::models::Language::Cpp => (
+            //     String::from("gcc-sandbox"), format!("/shared/{}.cpp", container_name), format!("gcc {}.cpp -o {0} && ./{0}", container_name)
+            // ),
+            crate::models::Language::Javascript => (
+                String::from("node-js-sandbox"), format!("/shared/{}.js", container_name), format!("node {}.js", container_name)
+            ),
+            // crate::models::Language::Typescript => (
+            //     String::from("node-ts-sandbox"), format!("/shared/{}.ts", container_name), format!("tsc /shared/{}.ts --outDir /shared && node /shared/{}.js", container_name, container_name)
+            // ),
+            crate::models::Language::Go => (
+                String::from("golang-sandbox"), format!("/shared/{}.go", container_name), format!("go run {}.go", container_name)
+            ),
+
+            _ => unimplemented!("{} not implemented yet", submission.language)
+        };
+
         let mut file = File::create(&filename)?;
         file.write_all(&submission.source_code.as_bytes())?;
         file.flush()?;
-
-        println!("AAAAAAAAAAAAAAAAAAAAAAA: {}", &filename);
 
         let params = CreateContainerOptionsBuilder::new()
         .name(container_name)
         .build();
 
         let config = ContainerCreateBody {
-            image: Some("rust-sandbox".to_string()),
-            cmd: Some(vec![format!("timeout 2 rustc {}.rs && ./{}", container_name, container_name).to_string()]),
+            image: Some(image_name.to_string()),
+            cmd: Some(vec![cmd.to_string()]),
             host_config: Some(bollard::models::HostConfig {
                 network_mode: Some("none".to_string()),
-                memory: Some(100000000),
-                memory_swap: Some(100000000),
-                pids_limit: Some(50),
+                memory: Some(512_000_000),
+                memory_swap: Some(512_000_000),
+                pids_limit: Some(500),
                 cap_drop: Some(vec!["ALL".to_string()]),
                 binds: Some(vec![
                     "shared:/sandbox".to_string(),
@@ -117,7 +136,7 @@ impl DockerClient {
 
             while let Some(Ok(ContainerWaitResponse { status_code, .. })) = wait_stream.next().await {
                 container_output.exit_code = Some(status_code as u8);
-                println!("Container exited with code: {}: {}", status_code, container_name);
+                // println!("Container exited with code: {}: {}", status_code, container_name);
             }
         };
 

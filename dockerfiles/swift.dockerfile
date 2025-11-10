@@ -1,4 +1,4 @@
-FROM swift:6.2.0-slim
+FROM swift:6.2.0
 
 # Create an unprivileged user for safety
 RUN useradd -m runner

@@ -59,7 +59,19 @@ To start Judge/Database server :
   ```
 - Postgres/Redis:
   - start the containers
-    
+
+## Implemented Languages
+- [x] Python
+- [x] Rust
+- [] Csharp
+- [x] C
+- [] Cpp
+- [x] Javascript
+- [] Typescript
+- [x] Go
+- [] Java
+- [] Swift
+
 ## Roadmap
 
 ### Q4 2025

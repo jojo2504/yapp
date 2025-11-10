@@ -9,5 +9,5 @@ for file in $DIR/*.dockerfile; do
   ADDR=${ADDR[0]}
   
   echo "building $ADDR dockerfile"
-  docker build -f "$file" -t "$ADDR-sandbox" .
+  docker build -f "$file" -t "$ADDR-sandbox" $DIR
 done
