@@ -1,12 +1,7 @@
-use std::time::SystemTime;
-
-use bollard::errors::Error;
-use tokio::time;
-
 use crate::{docker::DockerClient, models::{Output, Submission}};
 
 pub async fn process_submission(docker_client: &mut DockerClient, submission: &Submission) -> Result<Output, Box<dyn std::error::Error>> {
-    let container_name = format!("{}_sandbox_{}{}", submission.language, submission.id, submission.user_id);
+    let container_name = str::to_lowercase(&format!("{}_sandbox_{}", submission.language, submission.id));
 
     if let Err(e) = docker_client
         .create_container(&container_name, &submission)

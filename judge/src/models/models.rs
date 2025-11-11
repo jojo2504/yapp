@@ -29,6 +29,57 @@ impl fmt::Display for Language {
     }
 }
 
+impl Language {
+    pub fn extension(&self) -> String {
+        let extension = match self {
+            Language::Python => "py",
+            Language::Rust => "rs",
+            Language::Csharp => "cs",
+            Language::C => "c",
+            Language::Cpp => "cpp",
+            Language::Javascript => "js",
+            Language::Typescript => "ts",
+            Language::Go => "go",
+            Language::Java => "java",
+            Language::Swift => "swift",
+        };
+        extension.to_string()
+    }
+
+    // Represent the language sandbox container prefix
+    pub fn sandbox_name(&self) -> String {
+        let sandbox_name = match self {
+            Language::Python => "python-sandbox",
+            Language::Rust => "rust-sandbox",
+            Language::Csharp => "dotnet-sdk-sandbox",
+            Language::C => "gcc-sandbox",
+            Language::Cpp => "gcc-sandbox",
+            Language::Javascript => "node-js-sandbox",
+            Language::Typescript => "node-ts-sandbox",
+            Language::Go => "golang-sandbox",
+            Language::Java => "openjdk-sandbox",
+            Language::Swift => "swift-sandbox",
+        };
+        sandbox_name.to_string()
+    }
+
+    pub fn command(&self) -> String {
+        let command = match self {
+            Language::Python => "python main.py",
+            Language::Rust => "rustc main.rs && ./main",
+            Language::Csharp => "dotnet run",
+            Language::C => "gcc main.c -o main && ./main",
+            Language::Cpp => "gcc main.cpp -o {0} && ./{0}",
+            Language::Javascript => "node main.js",
+            Language::Typescript => "tsc /shared/main.ts --outDir /shared && node /shared/main.js",
+            Language::Go => "go run main.go",
+            Language::Java => todo!(),
+            Language::Swift => "swiftc main.swift && ./main",
+        };
+        command.to_string()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Verdict {
     Pending,

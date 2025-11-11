@@ -1,10 +1,10 @@
-use std::{fs::{self, File}, io::Write, path::PathBuf, time::Duration};
+use std::{fs::{self, File}, io::Write, time::Duration};
 
 use bollard::{Docker, container::LogOutput, query_parameters::{CreateContainerOptionsBuilder, LogsOptions, RemoveContainerOptions, StartContainerOptions, StopContainerOptions, WaitContainerOptions}, secret::{ContainerCreateBody, ContainerWaitResponse}};
 use tokio::time::timeout;
 use futures_util::stream::StreamExt;
 
-use crate::models::{Output, Submission};
+use crate::models::{Language, Output, Submission};
 
 #[derive(Clone)]
 pub struct DockerClient {
@@ -14,7 +14,7 @@ pub struct DockerClient {
 impl DockerClient {
     pub fn new_local_defaults() -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
-            docker: Docker::connect_with_local_defaults().unwrap()
+            docker: Docker::connect_with_local_defaults()?
         })
     }
 
@@ -24,35 +24,17 @@ impl DockerClient {
         }
     }
 
-    pub async fn create_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let (image_name, filename, cmd): (String, String, String) = match submission.language {
-            crate::models::Language::Python => (
-                String::from("python-sandbox"), format!("/shared/{}.py", container_name), format!("python {}.py", container_name)
-            ),
-            crate::models::Language::Rust => (
-                String::from("rust-sandbox"), format!("/shared/{}.rs", container_name), format!("rustc {}.rs && ./{}", container_name, container_name)
-            ),
-            // crate::models::Language::Csharp => (
-            //     String::from("dotnet-sdk-sandbox"), format!("/shared/{}.cs", container_name), format!("dotnet run")
-            // ),
-            crate::models::Language::C => (
-                String::from("gcc-sandbox"), format!("/shared/{}.c", container_name), format!("gcc {}.c -o {0} && ./{0}", container_name)
-            ),
-            // crate::models::Language::Cpp => (
-            //     String::from("gcc-sandbox"), format!("/shared/{}.cpp", container_name), format!("gcc {}.cpp -o {0} && ./{0}", container_name)
-            // ),
-            crate::models::Language::Javascript => (
-                String::from("node-js-sandbox"), format!("/shared/{}.js", container_name), format!("node {}.js", container_name)
-            ),
-            // crate::models::Language::Typescript => (
-            //     String::from("node-ts-sandbox"), format!("/shared/{}.ts", container_name), format!("tsc /shared/{}.ts --outDir /shared && node /shared/{}.js", container_name, container_name)
-            // ),
-            crate::models::Language::Go => (
-                String::from("golang-sandbox"), format!("/shared/{}.go", container_name), format!("go run {}.go", container_name)
-            ),
+    // call build to build/compile a code source if necessary in a more flexible container, one with more memory and pids available
+    pub async fn build(code_source: String) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        unimplemented!()
+    }
 
-            _ => unimplemented!("{} not implemented yet", submission.language)
-        };
+    pub async fn create_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let (image_name, filename, cmd): (String, String, String) = (
+            submission.language.sandbox_name(), 
+            format!("/shared/main.{}", submission.language.extension()), 
+            submission.language.command()
+        );
 
         let mut file = File::create(&filename)?;
         file.write_all(&submission.source_code.as_bytes())?;
