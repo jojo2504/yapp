@@ -2,22 +2,24 @@ mod docker;
 mod models;
 mod redis;
 mod task;
+mod request;
 
+use crate::{docker::DockerClient, request::ReqwestClient, models::Submission, redis::RedisService, task::process_submission};
 use futures_util::StreamExt;
-use crate::{docker::DockerClient, models::Submission, redis::RedisService, task::process_submission};
-use ::redis::{AsyncCommands, RedisResult, aio::ConnectionManager};
-use std::{sync::Arc, thread, time::Duration};
-use tokio::{sync::Semaphore, time};
+use ::redis::AsyncCommands;
+use std::sync::Arc;
+use tokio::sync::Semaphore;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut redis_service = RedisService::new().await?;
     let docker_client = DockerClient::new_local_defaults()?;
-
+    let reqwest_client = ReqwestClient::default();
+    
     redis_service.clear_all().await?;
 
     let mut redis_service_clone = redis_service.clone();
-    tokio::spawn(async move {
+    let handle: tokio::task::JoinHandle<()> = tokio::spawn(async move {
         let pubsub_conn = redis_service_clone.subscribe(&["new_jobs"]);
         let mut pubsub = pubsub_conn.await.unwrap();
         let pubsub_stream = &mut pubsub.on_message();
@@ -42,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let mut docker_client_clone = docker_client.clone();
                         tokio::spawn(async move {
                             let _permit = sem.acquire().await.unwrap();
-                            process_submission(&mut docker_client_clone, &submission).await;
+                            let _ = process_submission(&mut docker_client_clone, &submission).await;
                         });
                     }
                     None => {
@@ -52,8 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     });
+    handle.await?; // Should always be blocked here to prevent program exit
 
-    loop {
-        tokio::time::sleep(std::time::Duration::from_secs(1000)).await;
-    }
+    Ok(())
 }
