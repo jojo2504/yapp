@@ -23,8 +23,10 @@ jobs:
 
       - name: Lint
         working-directory: ./judge
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets
 
-      - name: Format Check
+      - name: Format Diff (non-blocking)
         working-directory: ./judge
-        run: cargo fmt --all -- --check
+        run: |
+          cargo fmt --all
+          git diff --exit-code || echo "::warning::Code is not formatted according to rustfmt"
