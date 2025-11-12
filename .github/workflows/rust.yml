@@ -18,10 +18,13 @@ jobs:
           override: true
 
       - name: Build
+        working-directory: ./judge
         run: cargo check --all --all-targets
 
       - name: Lint
+        working-directory: ./judge
         run: cargo clippy --all-targets -- -D warnings
 
       - name: Format Check
+        working-directory: ./judge
         run: cargo fmt --all -- --check
