@@ -16,17 +16,29 @@ jobs:
           toolchain: stable
           components: clippy, rustfmt
           override: true
-
+          
+      # Cache Cargo dependencies and build artifacts
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            judge/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('judge/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+            
       - name: Build
         working-directory: ./judge
         run: cargo check --all --all-targets
 
       - name: Lint
         working-directory: ./judge
-        run: cargo clippy --all-targets
+        run: cargo clippy --all-targets --all-features
 
-      - name: Format Diff (non-blocking)
+      - name: Format Check (non-blocking)
         working-directory: ./judge
         run: |
-          cargo fmt --all
-          git diff --exit-code || echo "::warning::Code is not formatted according to rustfmt"
+          cargo fmt --all -- --check || echo "::warning::Code is not formatted according to rustfmt"
+
