@@ -1,5 +1,5 @@
 package main
 
 func main() {
-	println("test hotload!")
+	println("test hotreload!")
 }

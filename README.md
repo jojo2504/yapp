@@ -24,41 +24,20 @@ The system is made up of **four major parts**, all working together:
 
 ## Getting Started
 
-> [!Important]
-You can also run `docker-compose up` to start all componants at once without needing to install anything else. Don't forget to have your .env file set up by removing or adding a new file `.env` with the right fields.
-
 Start downloading the tools belows:
-- **Node.js** `v25.1.0`
-  - https://nodejs.org/en/download
-- **Go** `1.25.3`
-  - https://go.dev/doc/install
-  - for hot reloading : https://github.com/air-verse/air
 - **Docker - Important !**
   - [Direct link](https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe?utm_source=docker&utm_medium=webreferral&utm_campaign=dd-smartbutton&utm_location=module)
-- **Rust** `x86_64-pc-windows-gnu`
-  - https://forge.rust-lang.org/infra/other-installation-methods.html
-  - for hot reloading : https://crates.io/crates/cargo-watch
+    
+Run `docker-compose up` to start all componants at once without needing to install anything else. Don't forget to have your .env file set up by removing or adding a new file `.env` with the right fields.
 
-To start Node.js server :
+> [!Warning]
+You may need to install WSL on windows to enable hot reloading
+
+To start Node.js server independently:
 ```bash
 cd ./frontend
 npm run dev
 ```
-
-To start Go server :
-```bash
-cd ./backend
-go run .
-```
-
-To start Judge/Database server :
-
-- Rust:
-  ```bash
-  cargo run
-  ```
-- Postgres/Redis:
-  - start the containers
 
 ## Implemented Languages
 - [x] Python
@@ -75,7 +54,7 @@ To start Judge/Database server :
 ## Roadmap
 
 ### Q4 2025
-- [ ] Set project template and clear roadmaps
+- [X] Set project template and clear roadmaps
 - [ ] Create API documentation
 - [ ] Set up CI/CD pipeline
 - [ ] Basic backend prototype
@@ -98,4 +77,4 @@ To start Judge/Database server :
 
 ---
 
-Made with love for YAPP - *Yet Another P2IP Project*
+Made with love for YAPP - *Yet Another P2IP Project* or *Yet Another Programming Platform...*
