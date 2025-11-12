@@ -8,6 +8,9 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    depends_on:
+      - postgres
+      - backend-go
 
   backend-go:
     build:
@@ -17,6 +20,9 @@ services:
       - ./backend:/app
     ports:
       - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
 
   rust-judge:
     build:
@@ -25,12 +31,33 @@ services:
     volumes:
       - ./judge:/judge
       - rust-target:/judge/target
-    stop_grace_period: 3s # Workaround for the cargo watch signals taking 10s to stop
+      - /var/run/docker.sock:/var/run/docker.sock
+      - shared:/shared
+    stop_grace_period: 2s # Workaround for the cargo watch signals taking 10s to stop
+    depends_on:
+      - backend-go
+
+  rust-test:
+    build:
+      context: ./judge
+      dockerfile: .dockerfile
+    command: cargo test -- --nocapture
+    volumes:
+      - ./judge:/judge
+      - rust-target:/judge/target
+      - /var/run/docker.sock:/var/run/docker.sock
+      - shared:/shared
+    depends_on:
+      - backend-go
 
   redis:
     image: redis
     volumes:
       - redis-data:/data
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server
 
   postgres:
     image: postgres
@@ -47,3 +74,5 @@ volumes:
   redis-data:
   postgres-data:
   rust-target:
+  shared:
+    external: true

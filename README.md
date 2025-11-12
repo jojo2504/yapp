@@ -39,6 +39,18 @@ cd ./frontend
 npm run dev
 ```
 
+## Implemented Languages
+- [x] Python
+- [x] Rust
+- [ ] Csharp
+- [x] C
+- [ ] Cpp
+- [x] Javascript
+- [ ] Typescript
+- [x] Go
+- [ ] Java
+- [ ] Swift
+
 ## Roadmap
 
 ### Q4 2025

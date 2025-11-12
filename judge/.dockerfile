@@ -2,6 +2,13 @@ FROM rust:1.91.0-slim-bookworm
 
 WORKDIR /judge
 
+# Install required system deps
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+    
 RUN cargo install cargo-watch
 
 # 2. Copy our manifests

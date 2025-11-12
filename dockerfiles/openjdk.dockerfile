@@ -1,4 +1,4 @@
-FROM openjdk:26-jdk-slim-bookworm
+FROM openjdk:26-ea-jdk-slim-bookworm
 
 # Create an unprivileged user for safety
 RUN useradd -m runner
