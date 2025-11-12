@@ -45,7 +45,7 @@ impl RedisService {
             .manager
             .rpush("queue", serialized.clone())
             .await?;
-        self.publish("new_jobs", "new jobs").await?;
+        self.publish("queue", "pushed new submission").await?;
         Ok(())
     }
 }

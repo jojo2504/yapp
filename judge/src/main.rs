@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut redis_service_clone = redis_service.clone();
     let handle: tokio::task::JoinHandle<()> = tokio::spawn(async move {
-        let pubsub_conn = redis_service_clone.subscribe(&["new_jobs"]);
+        let pubsub_conn = redis_service_clone.subscribe(&["queue"]);
         let mut pubsub = pubsub_conn.await.unwrap();
         let pubsub_stream = &mut pubsub.on_message();
         let semaphore = Arc::new(Semaphore::new(100));
@@ -37,14 +37,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match raw {
                     Some(json) => {
                         let submission: Submission = serde_json::from_str(&json).unwrap();
-                        // println!("Got submission {:?}", submission);
+                        println!("Got submission {:?}", submission);
 
                         // Process job asynchronously, limited by semaphore
                         let sem = Arc::clone(&semaphore);
                         let mut docker_client_clone = docker_client.clone();
                         tokio::spawn(async move {
                             let _permit = sem.acquire().await.unwrap();
-                            let _ = process_submission(&mut docker_client_clone, &submission).await;
+                            let output = process_submission(&mut docker_client_clone, &submission).await.unwrap();
+                            println!("{}", output.stdout_buf.unwrap()[0]);
+                            println!("{}", output.stderr_buf.unwrap()[0]);
+                            println!("{}", output.exit_code.unwrap());
                         });
                     }
                     None => {

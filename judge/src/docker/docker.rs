@@ -69,7 +69,7 @@ impl DockerClient {
 
     pub async fn start_container(&mut self, container_name: &str) -> Result<Output, Box<dyn std::error::Error + Send + Sync>> {
         let mut container_output = Output::default();
-        // println!("{}", container_name);
+        // println!("starting {}", container_name);
         
         let run_future = async {
             let _ = self.docker.start_container(container_name, None::<StartContainerOptions>).await;
@@ -125,7 +125,7 @@ impl DockerClient {
         match timeout(Duration::from_secs(4), run_future).await {
             // Ok(_) => println!("finished within 1 sec {}", container_name),
             Ok(_) => {
-                // println!();
+                // println!("ok ?");
             },
             Err(_) => {
                 eprintln!("Container {} timed out", container_name);
