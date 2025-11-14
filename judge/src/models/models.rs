@@ -138,3 +138,15 @@ impl Submission {
         }
     }
 }
+
+pub struct TestCase {
+    pub problem_id: u64,
+	pub input: String,
+	pub expected: String,
+	pub hidden: bool
+}
+
+pub struct Job {
+    pub submission: Submission,
+    pub tests: Vec<TestCase> // test all testcases with the submitted code 
+}
