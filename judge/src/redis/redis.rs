@@ -8,7 +8,7 @@ pub struct RedisService {
 }
 
 impl RedisService {
-    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let redis_client = redis::Client::open("redis://redis:6379")?;
         Ok(Self {
             client: redis_client.clone(),

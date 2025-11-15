@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut redis_service = RedisService::new().await?;
     let docker_client = DockerClient::new_local_defaults()?;
     let reqwest_client = ReqwestClient::default();
