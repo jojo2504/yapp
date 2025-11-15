@@ -47,7 +47,7 @@ use rstest::rstest;
 #[case(
     Language::Rust,
     r#"fn main() {
-        println!("hello world");
+        println!("RUST hello world");
     }"#,
     0
 )]

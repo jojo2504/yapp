@@ -77,6 +77,24 @@ impl Language {
             Language::Swift => "swiftc main.swift -o main",
         }.to_string()
     }
+
+    pub fn is_compiled(&self) -> bool {
+        match self {
+            Language::Python => false,
+            Language::Javascript => false,
+            Language::Typescript => false, // TS compiles to JS but is not executed as binary
+            _ => true
+        }
+    }
+
+    pub fn run_command(&self) -> String {
+        match self {
+            Language::Python => "python main.rs",
+            Language::Javascript => "node main.js",
+            Language::Typescript => "node main.ts", // TS compiles to JS but is not executed as binary
+            _ => "./main"
+        }.to_string()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

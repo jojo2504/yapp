@@ -29,9 +29,9 @@ impl DockerClient {
     }
 
     // call build to build/compile a code source if necessary in a more flexible container, one with more memory and pids available
-    pub async fn build(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        self.run_command(container_name, vec![submission.language.build_command()], None).await?;
-        println!("finished building");
+    pub async fn build(&self, container_name: &str, submission: &Submission, time_limit: Option<Duration>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.run_command(container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.build_command()], time_limit).await?;
+        // println!("finished building");
         Ok(())
     }
 
@@ -52,7 +52,7 @@ impl DockerClient {
         let config = ContainerCreateBody {
             image: Some(image_name.to_string()),
             entrypoint: Some(vec!["tail".to_string(), "-f".to_string(), "/dev/null".to_string()]),
-            // cmd: Some(vec!["sleep".to_string(), "infinity".to_string()]),
+            network_disabled: Some(true),
             host_config: Some(bollard::models::HostConfig {
                 network_mode: Some("none".to_string()),
                 memory: Some(512_000_000),
@@ -69,24 +69,17 @@ impl DockerClient {
         
         self.docker.create_container(Some(params), config).await?;
 
-        println!("created container");
+        // println!("created container");
         Ok(())
 
     }
 
     pub async fn start_container(&mut self, container_name: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.docker.start_container(container_name, None::<StartContainerOptions>).await?;       
-        let container = self.docker.inspect_container(&container_name, None::<InspectContainerOptions>).await.unwrap();
-        let status = container.state.unwrap().status.unwrap();
-        if status == ContainerStateStatusEnum::RUNNING {
-            println!("Container is running");
-        } else {
-            println!("Container is not running, status: {}", status);
-        }
-
         Ok(())
     }
-
+    
+    /// default `time_limit` if not specified is 1 second
     pub async fn run_command(&self, container_name: &str, command: Vec<String>, time_limit: Option<Duration>) -> Result<Output, Box<dyn std::error::Error + Send + Sync>> {
         let config = CreateExecOptions {
             cmd: Some(command),
@@ -95,7 +88,7 @@ impl DockerClient {
             ..Default::default()
         };
         
-        println!("running command");
+        // println!("running command");
         let exec = self.docker.create_exec(container_name, config).await?;
         
         // Start the exec once and get the stream
@@ -103,7 +96,7 @@ impl DockerClient {
         
         // Apply timeout to the entire stream processing
         let container_output = match timeout(
-            time_limit.unwrap_or(Duration::from_secs(2)),
+            time_limit.unwrap_or(Duration::from_secs(1)),
             self.process_stream(stream, &exec.id)
         ).await {
             Ok(result) => result?,
@@ -123,7 +116,7 @@ impl DockerClient {
                     Ok(log_output) => match log_output {
                         LogOutput::StdOut { message } => {
                             let s = String::from_utf8_lossy(&message).to_string();
-                            print!("{}", s); // Log to current stream
+                            // print!("{}", s); // Log to current stream
                             if let Some(ref mut buf) = container_output.stdout_buf {
                                 buf.push(s);
                             } else {
@@ -132,7 +125,7 @@ impl DockerClient {
                         }
                         LogOutput::StdErr { message } => {
                             let s = String::from_utf8_lossy(&message).to_string();
-                            eprint!("{}", s); // Log to current stream (stderr)
+                            // eprint!("{}", s); // Log to current stream (stderr)
                             if let Some(ref mut buf) = container_output.stderr_buf {
                                 buf.push(s);
                             } else {
@@ -156,11 +149,12 @@ impl DockerClient {
     }
 
 
-    pub async fn delete_container(&self, container_name: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn delete_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // println!("deleting container {}", container_name);
-        self.docker.stop_container(container_name, None::<StopContainerOptions>).await?;
+        let stop_opts = StopContainerOptions { t: Some(0), ..Default::default() };
+        self.docker.stop_container(container_name, Some(stop_opts)).await?;
         self.docker.remove_container(container_name, Some(RemoveContainerOptions::default())).await?;
-        let filename = format!("/shared/{}.rs", container_name);
+        let filename = format!("/shared/main.{}", submission.language.extension());
         fs::remove_file(&filename).ok(); // Ignore errors if file doesn't exist
 
         Ok(())
