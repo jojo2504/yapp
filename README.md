@@ -40,14 +40,14 @@ npm run dev
 ```
 
 ## Implemented Languages
-- [x] Python
-- [x] Rust
+- [ ] Python
+- [ ] Rust
 - [ ] Csharp
-- [x] C
+- [ ] C
 - [ ] Cpp
-- [x] Javascript
+- [ ] Javascript
 - [ ] Typescript
-- [x] Go
+- [ ] Go
 - [ ] Java
 - [ ] Swift
 

@@ -17,15 +17,18 @@ pub async fn process_submission(docker_client: &mut DockerClient, submission: &S
 
     // println!("trying to build {}", &container_name);
     if submission.language.is_compiled() {
-        docker_client.build(&container_name, submission, Some(Duration::from_secs(2))).await?;
+        docker_client.build(&container_name, submission, Some(Duration::from_secs(2))).await.map_err(|e| {
+            let _ = docker_client.delete_container(&container_name, submission);
+            anyhow::anyhow!("build failed: {e}")
+        })?;
     }
-    let output = match docker_client.run_command(&container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.run_command()], None).await {
-        Ok(output) => output,
-        Err(e) => {
-            docker_client.delete_container(&container_name, submission).await?;
-            panic!("deleting all containers and exiting during code execution: {}", e);
-        },
-    };
+    let output = docker_client
+        .run_command(&container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.run_command()], None)
+        .await
+        .map_err(|e| {
+            let _ = docker_client.delete_container(&container_name, submission);
+            anyhow::anyhow!("build failed: {e}")
+        })?;
 
     docker_client.delete_container(&container_name, submission).await?;
     // println!("deleted container");
