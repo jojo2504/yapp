@@ -45,6 +45,7 @@ impl DockerClient {
         let mut file = File::create(&filename)?;
         file.write_all(&submission.source_code.as_bytes())?;
         file.flush()?;
+        file.sync_all()?;
 
         let params = CreateContainerOptionsBuilder::new()
         .name(container_name)
