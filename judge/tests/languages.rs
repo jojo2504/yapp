@@ -51,12 +51,12 @@ use rstest::rstest;
     }"#,
     0
 )]
-async fn test_language_sandbox(#[case] language: Language, #[case] code: &str, #[case] expected: u8) -> Result<(), Box<dyn std::error::Error>>{
+async fn test_language_sandbox(#[case] language: Language, #[case] code: &str, #[case] expected: u8) -> Result<(), Box<dyn std::error::Error + Send + Sync>>{
     let mut docker_client = match DockerClient::new_local_defaults() {
         Ok(client) => client,
         Err(e) => {
             eprintln!("Failed to create Docker client: {e}");
-            return Err(e.into());
+            return Err(e);
         }
     };
 
@@ -76,7 +76,7 @@ async fn test_language_sandbox(#[case] language: Language, #[case] code: &str, #
         }
         Err(e) => {
             eprintln!("process_submission failed: {e}");
-            return Err(e.into());
+            return Err(e);
         }
     };
 
