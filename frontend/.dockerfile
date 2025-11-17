@@ -8,6 +8,9 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+# Copy the rest of the application (dependencies and other stuff)
+COPY . .
+
 EXPOSE 5173
 
 CMD ["npm", "run", "dev"]
