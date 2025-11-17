@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 match raw {
                     Some(json) => {
                         let submission: Submission = serde_json::from_str(&json).unwrap();
-                        // println!("Got submission {:?}", submission);
+                        println!("Got submission {:?}", submission);
 
                         // Process job asynchronously, limited by semaphore
                         let sem = Arc::clone(&semaphore);
