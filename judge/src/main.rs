@@ -5,13 +5,11 @@ mod task;
 mod request;
 
 use crate::{docker::DockerClient, request::ReqwestClient, models::Submission, redis::RedisService, task::process_submission};
-use futures_util::StreamExt;
-use ::redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut redis_service = RedisService::new().await?;
     let docker_client = DockerClient::new_local_defaults()?;
     let reqwest_client = ReqwestClient::default();
@@ -20,20 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut redis_service_clone = redis_service.clone();
     let handle: tokio::task::JoinHandle<()> = tokio::spawn(async move {
-        let pubsub_conn = redis_service_clone.subscribe(&["queue"]);
-        let mut pubsub = pubsub_conn.await.unwrap();
-        let pubsub_stream = &mut pubsub.on_message();
         let semaphore = Arc::new(Semaphore::new(100));
-
-        while let Some(msg) = pubsub_stream.next().await {
-            let _: String = msg.get_payload().unwrap(); // the "ping" message content
-
+        redis_service_clone.clone().listen_pubstream(&["queue"], async move || {
             loop {
-                let raw: Option<String> = redis_service_clone
-                    .manager
-                    .lpop("queue", None)
-                    .await
-                    .unwrap();
+                let raw = redis_service_clone.fetch_job().await.unwrap();
                 match raw {
                     Some(json) => {
                         let submission: Submission = serde_json::from_str(&json).unwrap();
@@ -43,11 +31,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let sem = Arc::clone(&semaphore);
                         let mut docker_client_clone = docker_client.clone();
                         tokio::spawn(async move {
-                            let _permit = sem.acquire().await.unwrap();
-                            let output = process_submission(&mut docker_client_clone, &submission).await.unwrap();
-                            println!("{}", output.stdout_buf.unwrap()[0]);
-                            println!("{}", output.stderr_buf.unwrap()[0]);
-                            println!("{}", output.exit_code.unwrap());
+                            let _ = sem.acquire().await.unwrap();
+                            let _ = process_submission(&mut docker_client_clone, &submission).await;
                         });
                     }
                     None => {
@@ -55,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-        }
+        }).await;
     });
     handle.await?; // Should always be blocked here to prevent program exit
 

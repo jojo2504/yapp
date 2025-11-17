@@ -63,20 +63,37 @@ impl Language {
         sandbox_name.to_string()
     }
 
-    pub fn command(&self) -> String {
-        let command = match self {
-            Language::Python => "python main.py",
-            Language::Rust => "rustc main.rs && ./main",
-            Language::Csharp => "dotnet run",
-            Language::C => "gcc main.c -o main && ./main",
-            Language::Cpp => "gcc main.cpp -o {0} && ./{0}",
+    pub fn build_command(&self) -> String {
+        match self {
+            Language::Python => unreachable!("There is no build step for Python"),
+            Language::Rust => "rustc main.rs",
+            Language::Csharp => "dotnet build",
+            Language::C => "gcc main.c -o main",
+            Language::Cpp => "gcc main.cpp -o main",
+            Language::Javascript => unreachable!("There is no build step for Javascript"),
+            Language::Typescript => unreachable!("There is no build step for Typescript"),
+            Language::Go => "go build -o main",
+            Language::Java => unimplemented!(),
+            Language::Swift => "swiftc main.swift -o main",
+        }.to_string()
+    }
+
+    pub fn is_compiled(&self) -> bool {
+        match self {
+            Language::Python => false,
+            Language::Javascript => false,
+            Language::Typescript => false, // TS compiles to JS but is not executed as binary
+            _ => true
+        }
+    }
+
+    pub fn run_command(&self) -> String {
+        match self {
+            Language::Python => "python main.rs",
             Language::Javascript => "node main.js",
-            Language::Typescript => "tsc /shared/main.ts --outDir /shared && node /shared/main.js",
-            Language::Go => "go run main.go",
-            Language::Java => todo!(),
-            Language::Swift => "swiftc main.swift && ./main",
-        };
-        command.to_string()
+            Language::Typescript => "node main.ts", // TS compiles to JS but is not executed as binary
+            _ => "./main"
+        }.to_string()
     }
 }
 
@@ -137,4 +154,16 @@ impl Submission {
             test_results: None,
         }
     }
+}
+
+pub struct TestCase {
+    pub problem_id: u64,
+	pub input: String, // the json version of the input 
+	pub expected: String, // the json version of the output
+	pub hidden: bool
+}
+
+pub struct Job {
+    pub submission: Submission,
+    pub tests: Vec<TestCase> // test all testcases with the submitted code 
 }

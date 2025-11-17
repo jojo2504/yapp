@@ -1,6 +1,5 @@
-use redis::{AsyncCommands, PubSub, RedisResult, aio::ConnectionManager};
-
-use crate::{docker::DockerClient, models::Submission};
+use redis::{AsyncCommands, RedisResult, aio::ConnectionManager};
+use futures_util::StreamExt;
 
 #[derive(Clone)]
 pub struct RedisService {
@@ -9,7 +8,7 @@ pub struct RedisService {
 }
 
 impl RedisService {
-    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let redis_client = redis::Client::open("redis://redis:6379")?;
         Ok(Self {
             client: redis_client.clone(),
@@ -39,13 +38,16 @@ impl RedisService {
         Ok(())
     }
 
-    pub async fn add_submission(&mut self, submission: &Submission) -> RedisResult<()> {
-        let serialized = serde_json::to_string(submission).unwrap();
-        let _: () = self
-            .manager
-            .rpush("queue", serialized.clone())
-            .await?;
-        self.publish("queue", "pushed new submission").await?;
-        Ok(())
+    pub async fn listen_pubstream<F: AsyncFnMut() -> ()>(&mut self, channels: &[&str], mut handle_jobs: F) {
+        let pubsub_conn = self.subscribe(channels);
+        let mut pubsub = pubsub_conn.await.unwrap();
+        let pubsub_stream = &mut pubsub.on_message();
+        while let Some(_msg) = pubsub_stream.next().await {
+            handle_jobs().await;
+        }
+    }
+
+    pub async fn fetch_job(&mut self) -> RedisResult<Option<String>> {
+        Ok(self.manager.lpop("queue", None).await?)
     }
 }
