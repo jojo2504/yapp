@@ -1,4 +1,4 @@
-package submission
+package judge
 
 import (
 	"backend/api/types/submission"
@@ -7,12 +7,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CreateSubmission(c *gin.Context) {
+func SendResult(c *gin.Context) {
 	var submission submission.Submission
-
 	if err := c.BindJSON(&submission); err != nil {
 		return
 	}
 
 	c.IndentedJSON(http.StatusCreated, submission)
+}
+
+func Test(c *gin.Context) {
+	c.IndentedJSON(http.StatusCreated, 1)
 }
