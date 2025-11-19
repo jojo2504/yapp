@@ -20,6 +20,7 @@ services:
       - ./backend:/app
     ports:
       - "8080:8080"
+    stop_grace_period: 2s # Workaround for the cargo watch signals taking 10s to stop
     depends_on:
       - postgres
       - redis
@@ -75,4 +76,3 @@ volumes:
   postgres-data:
   rust-target:
   shared:
-    external: true
