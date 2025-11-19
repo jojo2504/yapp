@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use crate::{docker::{self, DockerClient}, models::{Output, Submission}};
+use crate::{docker::DockerClient, models::{Output, Submission}};
+use colored::Colorize;
 
 /// Process a code submission and fill all submissions's optional fields to then send back to Go
 /// 
@@ -12,43 +13,39 @@ use crate::{docker::{self, DockerClient}, models::{Output, Submission}};
 /// - return and send to go
 pub async fn process_submission(docker_client: &mut DockerClient, submission: &Submission) -> Result<Output, Box<dyn std::error::Error + Send + Sync>> {
     let container_name = str::to_lowercase(&format!("{}_sandbox_{}", submission.language, submission.id));
+    
+    // If *anything* fails after this, we still want cleanup
+    let result = async {
+        docker_client.create_container(&container_name, submission).await?;
+        docker_client.start_container(&container_name).await?;
+        docker_client.prepare_file(&container_name, submission).await?;
 
-    // Create the container for this specific submission
-    if let Err(e) = docker_client.create_container(&container_name, &submission).await {
-        eprintln!("create_container error: {:?}", e);
-        docker_client.delete_container(&container_name).await.ok();
-        return Err(e);
+        if submission.language.is_compiled() {
+            docker_client.build(&container_name, submission, Some(Duration::from_secs(2))).await?;
+        }
+
+        let output = docker_client
+            .run_command(
+                &container_name,
+                vec!["bash".into(), "-c".into(), submission.language.run_command()],
+                None,
+            )
+            .await?;
+
+        if output.exit_code != Some(0) {
+            eprintln!(
+                "Error executing {}: {}",
+                &container_name,
+                output.stderr_buf.as_ref().unwrap()[0]
+            );
+        }
+
+        Ok(output)
     }
+    .await;
 
-    // Start the container, and run all required command and tests
-    docker_client.start_container(&container_name).await.map_err(|e| {
-        let _ = docker_client.delete_container(&container_name);
-        anyhow::anyhow!("starting container failed: {e}")
-    })?;
+    // cleanup happens *always*
+    let _ = docker_client.delete_container(&container_name).await;
 
-    docker_client.prepare_file(&container_name, submission).await?;
-
-    // println!("trying to build {}", &container_name);
-    if submission.language.is_compiled() {
-        docker_client.build(&container_name, submission, Some(Duration::from_secs(2))).await.map_err(|e| {
-            let _ = docker_client.delete_container(&container_name);
-            anyhow::anyhow!("build failed: {e}")
-        })?;
-    }
-    let output = docker_client
-        .run_command(&container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.run_command()], None)
-        .await
-        .map_err(|e| {
-            let _ = docker_client.delete_container(&container_name);
-            anyhow::anyhow!("run program failed: {e}")
-        })?;
-
-    if output.exit_code != Some(0) {
-        eprintln!("Error whem executing command {}:{}", &container_name, output.stderr_buf.as_ref().unwrap()[0]);
-    }
-
-    docker_client.delete_container(&container_name).await?;
-    // println!("deleted container");
-
-    Ok(output)
+    result
 }

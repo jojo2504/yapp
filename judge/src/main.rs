@@ -8,7 +8,7 @@ use crate::{docker::DockerClient, request::ReqwestClient, models::Submission, re
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut redis_service = RedisService::new().await?;
     let docker_client = DockerClient::new_local_defaults()?;
