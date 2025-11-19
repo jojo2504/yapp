@@ -16,13 +16,6 @@ impl RedisService {
         })
     }
 
-    pub async fn publish(&self, channel: &str, message: &str) -> RedisResult<()> {
-        // Get a connection from the manager for publishing
-        let mut conn = self.manager.clone();
-        let _: () = conn.publish(channel, message).await?;
-        Ok(())
-    }
-
     pub async fn subscribe(&self, channels: &[&str]) -> RedisResult<redis::aio::PubSub> {
         // Get a dedicated connection for subscription
         let mut pubsub_conn = self.client.get_async_pubsub().await?;

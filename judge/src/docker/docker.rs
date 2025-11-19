@@ -1,10 +1,10 @@
-use std::{fs::{self, File}, io::Write, time::Duration};
+use std::time::Duration;
 
-use bollard::{Docker, container::LogOutput, exec::{CreateExecOptions, StartExecOptions, StartExecResults}, query_parameters::{AttachContainerOptions, CreateContainerOptionsBuilder, InspectContainerOptions, LogsOptions, RemoveContainerOptions, StartContainerOptions, StopContainerOptions, WaitContainerOptions}, secret::{ContainerCreateBody, ContainerStateStatusEnum, ContainerWaitResponse}};
+use bollard::{Docker, container::LogOutput, exec::{CreateExecOptions, StartExecOptions, StartExecResults}, query_parameters::{CreateContainerOptionsBuilder, RemoveContainerOptions, StartContainerOptions, StopContainerOptions}, secret::ContainerCreateBody};
 use tokio::time::timeout;
 use futures_util::stream::StreamExt;
 
-use crate::models::{Language, Output, Submission};
+use crate::models::{Output, Submission};
 
 #[derive(Clone)]
 pub struct DockerClient {
