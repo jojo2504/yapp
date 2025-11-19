@@ -14,7 +14,7 @@ use colored::Colorize;
 pub async fn process_submission(docker_client: &mut DockerClient, submission: &Submission) -> Result<Output, Box<dyn std::error::Error + Send + Sync>> {
     let container_name = str::to_lowercase(&format!("{}_sandbox_{}", submission.language, submission.id));
     
-    // If *anything* fails after this, we still want cleanup
+    // If anything fails after this, we still want cleanup
     let result = async {
         docker_client.create_container(&container_name, submission).await?;
         docker_client.start_container(&container_name).await?;
@@ -34,7 +34,8 @@ pub async fn process_submission(docker_client: &mut DockerClient, submission: &S
 
         if output.exit_code != Some(0) {
             eprintln!(
-                "Error executing {}: {}",
+                "{} executing {}: {}",
+                "Error".red(),
                 &container_name,
                 output.stderr_buf.as_ref().unwrap()[0]
             );
@@ -44,7 +45,7 @@ pub async fn process_submission(docker_client: &mut DockerClient, submission: &S
     }
     .await;
 
-    // cleanup happens *always*
+    // cleanup
     let _ = docker_client.delete_container(&container_name).await;
 
     result
