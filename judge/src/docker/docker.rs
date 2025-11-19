@@ -20,7 +20,7 @@ impl DockerClient {
 
     /// call build to build/compile a code source
     pub async fn build(&self, container_name: &str, submission: &Submission, time_limit: Option<Duration>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        self.run_command(container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.build_command()], time_limit).await?;
+        self.run_command(container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.build_command().expect("")], time_limit).await?;
         // println!("finished building");
         Ok(())
     }
@@ -153,11 +153,9 @@ impl DockerClient {
 
 
     pub async fn delete_container(&self, container_name: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // println!("deleting container {}", container_name);
         let stop_opts = StopContainerOptions { t: Some(0), ..Default::default() };
         self.docker.stop_container(container_name, Some(stop_opts)).await?;
         self.docker.remove_container(container_name, Some(RemoveContainerOptions::default())).await?;
-
         Ok(())
     }
 }

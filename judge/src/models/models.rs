@@ -63,19 +63,23 @@ impl Language {
         sandbox_name.to_string()
     }
 
-    pub fn build_command(&self) -> String {
+    pub fn build_command(&self) -> Option<String> {
         match self {
-            Language::Python => unreachable!("There is no build step for Python"),
-            Language::Rust => "rustc main.rs -o main",
-            Language::Csharp => "dotnet new console --force && mv main.cs Program.cs && dotnet build -o .",
-            Language::C => "gcc main.c -o main",
-            Language::Cpp => "g++ main.cpp -o main -lstdc++",
-            Language::Javascript => unreachable!("There is no build step for Javascript"),
-            Language::Typescript => unreachable!("There is no build step for Typescript"),
-            Language::Go => "go build -o myprogram main.go",
-            Language::Java => "javac main.java",
-            Language::Swift => "swiftc main.swift -o main",
-        }.to_string()
+            Language::Python
+            | Language::Javascript
+            | Language::Typescript => {
+                eprintln!("There is no build step for {:?}", self);
+                None
+            }
+
+            Language::Rust => Some("rustc main.rs -o main".into()),
+            Language::Csharp => Some("dotnet new console --force && mv main.cs Program.cs && dotnet build -o .".into()),
+            Language::C => Some("gcc main.c -o main".into()),
+            Language::Cpp => Some("g++ main.cpp -o main -lstdc++".into()),
+            Language::Go => Some("go build -o myprogram main.go".into()),
+            Language::Java => Some("javac main.java".into()),
+            Language::Swift => Some("swiftc main.swift -o main".into()),
+        }
     }
 
     pub fn is_compiled(&self) -> bool {
