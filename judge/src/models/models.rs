@@ -66,14 +66,14 @@ impl Language {
     pub fn build_command(&self) -> String {
         match self {
             Language::Python => unreachable!("There is no build step for Python"),
-            Language::Rust => "rustc main.rs",
-            Language::Csharp => "dotnet build",
+            Language::Rust => "rustc main.rs -o main",
+            Language::Csharp => "dotnet new console --force && mv main.cs Program.cs && dotnet build -o .",
             Language::C => "gcc main.c -o main",
-            Language::Cpp => "gcc main.cpp -o main",
+            Language::Cpp => "g++ main.cpp -o main -lstdc++",
             Language::Javascript => unreachable!("There is no build step for Javascript"),
             Language::Typescript => unreachable!("There is no build step for Typescript"),
-            Language::Go => "go build -o main",
-            Language::Java => unimplemented!(),
+            Language::Go => "go build -o myprogram main.go",
+            Language::Java => "javac main.java",
             Language::Swift => "swiftc main.swift -o main",
         }.to_string()
     }
@@ -89,7 +89,7 @@ impl Language {
 
     pub fn run_command(&self) -> String {
         match self {
-            Language::Python => "python main.rs",
+            Language::Python => "python main.py",
             Language::Javascript => "node main.js",
             Language::Typescript => "node main.ts", // TS compiles to JS but is not executed as binary
             _ => "./main"

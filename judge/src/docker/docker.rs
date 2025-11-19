@@ -12,57 +12,53 @@ pub struct DockerClient {
 }
 
 impl DockerClient {
-    pub fn get_docker(&self) -> Docker {
-        self.docker.clone()
-    }
-
     pub fn new_local_defaults() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             docker: Docker::connect_with_local_defaults()?
         })
     }
 
-    pub fn from(docker: Docker) -> Self {
-        Self { 
-            docker: docker
-        }
-    }
-
-    // call build to build/compile a code source if necessary in a more flexible container, one with more memory and pids available
+    /// call build to build/compile a code source
     pub async fn build(&self, container_name: &str, submission: &Submission, time_limit: Option<Duration>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.run_command(container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.build_command()], time_limit).await?;
         // println!("finished building");
         Ok(())
     }
 
+    /// file injection based on language
+    pub async fn prepare_file(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let filename = format!("/tmp/main.{}", submission.language.extension());
+        let source = &submission.source_code;
+
+        // Create the file using cat with heredoc to handle multi-line content properly
+        let cmd = vec![
+            "bash".to_string(),
+            "-c".to_string(),
+            format!("cat > {} << 'EOFMARKER'\n{}\nEOFMARKER", filename, source),
+        ];
+
+        self.run_command(container_name, cmd, None).await?;
+
+        Ok(())
+    }
+
     pub async fn create_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let (image_name, filename): (String, String) = (
-            submission.language.sandbox_name(), 
-            format!("/shared/main.{}", submission.language.extension())
-        );
-
-        // Create the temp file in /shared in the docker container
-        let mut file = File::create(&filename)?;
-        file.write_all(&submission.source_code.as_bytes())?;
-        file.flush()?;
-        file.sync_all()?;
-
         let params = CreateContainerOptionsBuilder::new()
         .name(container_name)
         .build();
         let config = ContainerCreateBody {
-            image: Some(image_name.to_string()),
+            image: Some(submission.language.sandbox_name()),
             entrypoint: Some(vec!["tail".to_string(), "-f".to_string(), "/dev/null".to_string()]),
             network_disabled: Some(true),
+            working_dir: Some("/tmp".to_string()),
             host_config: Some(bollard::models::HostConfig {
                 network_mode: Some("none".to_string()),
-                memory: Some(512_000_000),
-                memory_swap: Some(512_000_000),
+                memory: Some(512_000_000),      // 500 MB
+                memory_swap: Some(512_000_000), // same as memory
+                cpu_period: Some(100_000),
+                cpu_quota: Some(50_000),        // 50% of a CPU
                 pids_limit: Some(500),
                 cap_drop: Some(vec!["ALL".to_string()]),
-                binds: Some(vec![
-                    "shared:/sandbox".to_string(),
-                ]),
                 ..Default::default()
             }),
             ..Default::default()
@@ -72,7 +68,6 @@ impl DockerClient {
 
         // println!("created container");
         Ok(())
-
     }
 
     pub async fn start_container(&mut self, container_name: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -86,6 +81,7 @@ impl DockerClient {
             cmd: Some(command),
             attach_stdout: Some(true),
             attach_stderr: Some(true),
+            working_dir: Some("/tmp".to_string()),  // Execute commands in /tmp
             ..Default::default()
         };
         
@@ -101,9 +97,15 @@ impl DockerClient {
             self.process_stream(stream, &exec.id)
         ).await {
             Ok(result) => result?,
-            Err(_) => return Err("Time limit exceeded".into())
+            Err(_) => {
+                let _ = self.delete_container(&container_name);
+                return Err(format!("Time limit exceeded {}", &container_name).into())
+            } 
         };
         
+        if !container_output.stderr_buf.is_none() {
+            eprintln!("container output stderr: {}", container_output.stderr_buf.as_ref().unwrap()[0])
+        }
         Ok(container_output)
     }
 
@@ -150,13 +152,11 @@ impl DockerClient {
     }
 
 
-    pub async fn delete_container(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn delete_container(&self, container_name: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // println!("deleting container {}", container_name);
         let stop_opts = StopContainerOptions { t: Some(0), ..Default::default() };
         self.docker.stop_container(container_name, Some(stop_opts)).await?;
         self.docker.remove_container(container_name, Some(RemoveContainerOptions::default())).await?;
-        let filename = format!("/shared/main.{}", submission.language.extension());
-        fs::remove_file(&filename).ok(); // Ignore errors if file doesn't exist
 
         Ok(())
     }
