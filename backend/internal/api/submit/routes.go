@@ -1,18 +1,18 @@
 package submit
 
 import (
-	"backend/internal/redisService"
+    "backend/internal/redisService"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	Redis redisService.RedisService
+    Redis redisService.RedisService
 }
 
 // Init submit endpoint
 func RegisterRoutes(r *gin.Engine, redis redisService.RedisService) {
-	h := Handler{Redis: redis}
+    h := Handler{Redis: redis}
 
-	r.POST("/api/submit", h.SendSubmission)
+    r.POST("/api/submit", h.SendSubmission)
 }
