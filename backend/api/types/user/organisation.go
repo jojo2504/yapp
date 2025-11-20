@@ -3,8 +3,8 @@ package user
 import "backend/api/types/base"
 
 type Organisation struct {
-	base.BaseModel
+    base.BaseModel
 
-	Name         string `json:"name"`
-	Localisation string `json:"localisation"`
+    Name         string `json:"name"`
+    Localisation string `json:"localisation"`
 }
