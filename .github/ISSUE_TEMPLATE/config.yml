@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feature
+    about: Please open a feature request here.
+  - name: Security
+    about: Please report security vulnerabilities here.
+  - name: Bug
+    about: Please report bugs here.
+    
