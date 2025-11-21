@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import styles from '../assets/base.module.css'
+import styles from '../../style/base.module.css'
 
 export default function HomePage() {
     return (
@@ -13,7 +13,7 @@ export default function HomePage() {
                         fontWeight: '700'
                     }}>
                         <span className={styles.textGradient}>
-                            🎓 EduCode
+                            🎓 YAPP
                         </span>
                     </h1>
                     <p className={styles.textSecondary} style={{
@@ -27,7 +27,7 @@ export default function HomePage() {
 
                 {/* CTA Section */}
                 <div style={{ textAlign: 'center' }}>
-                    <Link to="/code" style={{ textDecoration: 'none' }}>
+                    <Link to="/auth/register" style={{ textDecoration: 'none' }}>
                         <button
                             className={styles.btnSuccess}
                             style={{
