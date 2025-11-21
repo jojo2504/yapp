@@ -2,3 +2,4 @@ target/
 backend/tmp
 .env
 .vscode
+.idea
