@@ -1,0 +1,13 @@
+name: Feature Request
+description: File a feature request.
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: feature
+    attributes:
+      label: What new feature do you want implemented ?
+      description: Also tell us, why would it be useful ?
+      placeholder: I'd like this thing to do that...
+    validations:
+      required: true
