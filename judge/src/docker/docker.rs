@@ -89,7 +89,7 @@ impl DockerClient {
         let exec = self.docker.create_exec(container_name, config).await?;
         
         // Start the exec once and get the stream
-        let stream = self.docker.start_exec(&exec.id, None::<StartExecOptions>).await?;
+        let stream = self.docker.start_exec(&exec.id, Some(StartExecOptions { detach: false, ..Default::default() })).await?;
         
         // Apply timeout to the entire stream processing
         let container_output = match timeout(

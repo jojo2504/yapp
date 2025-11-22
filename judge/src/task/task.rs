@@ -21,7 +21,7 @@ pub async fn process_submission(docker_client: &mut DockerClient, submission: &S
         docker_client.prepare_file(&container_name, submission).await?;
 
         if submission.language.is_compiled() {
-            docker_client.build(&container_name, submission, Some(Duration::from_secs(2))).await?;
+            docker_client.build(&container_name, submission, Some(Duration::from_secs(10))).await?;
         }
 
         let output = docker_client

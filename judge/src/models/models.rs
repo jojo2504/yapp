@@ -73,10 +73,10 @@ impl Language {
             }
 
             Language::Rust => Some("rustc main.rs -o main".into()),
-            Language::Csharp => Some("dotnet new console --force && mv main.cs Program.cs && dotnet build -o .".into()),
+            Language::Csharp => Some("fastcsc main.cs && chmod +x main.exe".into()),
             Language::C => Some("gcc main.c -o main".into()),
             Language::Cpp => Some("g++ main.cpp -o main -lstdc++".into()),
-            Language::Go => Some("go build -o myprogram main.go".into()),
+            Language::Go => Some("go build -o main main.go".into()),
             Language::Java => Some("javac main.java".into()),
             Language::Swift => Some("swiftc main.swift -o main".into()),
         }
@@ -96,6 +96,7 @@ impl Language {
             Language::Python => "python main.py",
             Language::Javascript => "node main.js",
             Language::Typescript => "node main.ts", // TS compiles to JS but is not executed as binary
+            Language::Csharp => "dotnet main.exe",
             _ => "./main"
         }.to_string()
     }

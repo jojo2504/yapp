@@ -5,8 +5,8 @@ RUN npm install typescript
 
 # Create an unprivileged user for safety
 RUN useradd -m runner
-WORKDIR /sandbox
-RUN chown -R runner:runner /sandbox
+WORKDIR /tmp
+RUN chown -R runner:runner /tmp
 
 # Switch to non-root user
 USER runner
