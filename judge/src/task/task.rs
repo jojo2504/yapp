@@ -1,7 +1,8 @@
 use std::time::Duration;
 
-use crate::{docker::DockerClient, models::{Output, Submission}};
+use crate::{docker::DockerClient, models::{Output, Submission, TestCase, Verdict}};
 use colored::Colorize;
+use uuid::Uuid;
 
 /// Process a code submission and fill all submissions's optional fields to then send back to Go
 /// 
@@ -49,4 +50,27 @@ pub async fn process_submission(docker_client: &mut DockerClient, submission: &S
     let _ = docker_client.delete_container(&container_name).await;
 
     result
+}
+
+pub async fn check_result(tests: &Vec<TestCase>, output: &Output, submission: &mut Submission, uuid: &Uuid) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let stdout = output.stdout_buf.as_ref().expect("stdout shouldnt not be empty except during error");
+    let (results, others): (Vec<String>, Vec<String>) = stdout.iter()
+    .flat_map(|x| x.split("\n"))
+    .filter(|s| !s.is_empty())
+    .map(|s| s.to_string())
+    .partition(|s| s.starts_with(&uuid.to_string()));
+
+    println!("results {:?}", results);
+    println!("others {:?}", others);
+    
+    submission.verdict = Some(Verdict::Accepted);
+    for i in 0..tests.len() {
+        let result: Vec<&str> = results[i].split(" ").collect::<Vec<_>>();
+        if *result.first().unwrap() == uuid.to_string() && tests[i].expected != *result.last().unwrap() {
+            submission.verdict = Some(Verdict::WrongAnswer);
+            break;
+        }
+    }
+
+    Ok(())
 }

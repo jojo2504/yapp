@@ -66,7 +66,7 @@ async fn test_language_sandbox(#[case] language: Language, #[case] code: &str, #
         1,        // maybe contest_id or similar
         language.clone(),
         code.to_string(),
-    );
+    ).build();
 
     let result = process_submission(&mut docker_client, &submission).await;
 

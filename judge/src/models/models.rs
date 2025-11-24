@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use serde::{Serialize, Deserialize};
 
@@ -9,7 +9,7 @@ pub struct Output {
     pub exit_code: Option<u8>
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum Language {
     Python,
     Rust,
@@ -21,6 +21,8 @@ pub enum Language {
     Go,
     Java,
     Swift,
+    #[default]
+    None
 }
 
 impl fmt::Display for Language {
@@ -42,6 +44,7 @@ impl Language {
             Language::Go => "go",
             Language::Java => "java",
             Language::Swift => "swift",
+            _ => unreachable!()
         };
         extension.to_string()
     }
@@ -59,6 +62,7 @@ impl Language {
             Language::Go => "golang-sandbox",
             Language::Java => "openjdk-sandbox",
             Language::Swift => "swift-sandbox",
+            _ => unreachable!()
         };
         sandbox_name.to_string()
     }
@@ -79,6 +83,7 @@ impl Language {
             Language::Go => Some("go build -o main main.go".into()),
             Language::Java => Some("javac main.java".into()),
             Language::Swift => Some("swiftc main.swift -o main".into()),
+            _ => unreachable!()
         }
     }
 
@@ -144,21 +149,90 @@ impl Submission {
         problem_id: u64,
         language: Language,
         source_code: String,
-    ) -> Self {
-        Self {
-            id,
-            user_id,
-            problem_id,
-            language,
-            source_code,
-            verdict: None,
-            message: None,
-            execution_time: None,
-            memory_usage: None,
-            judge_output: None,
-            test_results: None,
+    ) -> SubmissionBuilder {
+        SubmissionBuilder { id, user_id, problem_id, language, source_code, ..Default::default() }
+    }
+
+    pub fn from(submission: Submission) -> SubmissionBuilder {
+        SubmissionBuilder { 
+            id: submission.id, 
+            user_id: submission.user_id, 
+            problem_id: submission.problem_id, 
+            language: submission.language, 
+            source_code: submission.source_code, 
+            ..Default::default() 
         }
     }
+}
+
+#[derive(Default)]
+pub struct SubmissionBuilder {
+    id: u64,
+    user_id: u64,
+    problem_id: u64,
+    language: Language,
+    source_code: String,
+    verdict: Option<Verdict>,
+    message: Option<String>,
+    execution_time: Option<u32>,
+    memory_usage: Option<u32>,
+    judge_output: Option<String>,
+    test_results: Option<Vec<TestCaseResult>>,
+}
+
+impl SubmissionBuilder {
+    pub fn verdict(mut self, verdict: Verdict) -> Self {
+        self.verdict = Some(verdict);
+        self
+    }
+
+    pub fn message(mut self, message: String) -> Self {
+        self.message = Some(message);
+        self
+    }
+
+    pub fn execution_time(mut self, execution_time: u32) -> Self {
+        self.execution_time = Some(execution_time);
+        self
+    }
+
+    pub fn memory_usage(mut self, memory_usage: u32) -> Self {
+        self.memory_usage = Some(memory_usage);
+        self
+    }
+
+    pub fn judge_output(mut self, judge_output: String) -> Self {
+        self.judge_output = Some(judge_output);
+        self
+    }
+
+    pub fn test_results(mut self, test_results: Vec<TestCaseResult>) -> Self {
+        self.test_results = Some(test_results);
+        self
+    }
+
+    pub fn build(self) -> Submission {
+        Submission { 
+            id: self.id, 
+            user_id: self.user_id, 
+            problem_id: self.problem_id, 
+            language: self.language, 
+            source_code: self.source_code, 
+            verdict: self.verdict, 
+            message: self.message, 
+            execution_time: self.execution_time, 
+            memory_usage: self.memory_usage, 
+            judge_output: self.judge_output, 
+            test_results: self.test_results 
+        }
+    }
+}
+
+pub struct Problem {
+    pub problem_id: u64,
+    pub function_name: String,
+    pub parameters: Vec<(String, Option<String>)>, // parameter's  name | type
+    pub return_type: String
 }
 
 pub struct TestCase {
@@ -170,5 +244,6 @@ pub struct TestCase {
 
 pub struct Job {
     pub submission: Submission,
+    pub problem: Problem,
     pub tests: Vec<TestCase> // test all testcases with the submitted code 
 }
