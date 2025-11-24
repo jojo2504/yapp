@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 use serde::{Serialize, Deserialize};
 
@@ -44,7 +44,7 @@ impl Language {
             Language::Go => "go",
             Language::Java => "java",
             Language::Swift => "swift",
-            _ => unreachable!()
+            Language::None => unreachable!()
         };
         extension.to_string()
     }
@@ -62,7 +62,7 @@ impl Language {
             Language::Go => "golang-sandbox",
             Language::Java => "openjdk-sandbox",
             Language::Swift => "swift-sandbox",
-            _ => unreachable!()
+            Language::None => unreachable!()
         };
         sandbox_name.to_string()
     }
@@ -83,7 +83,7 @@ impl Language {
             Language::Go => Some("go build -o main main.go".into()),
             Language::Java => Some("javac main.java".into()),
             Language::Swift => Some("swiftc main.swift -o main".into()),
-            _ => unreachable!()
+            Language::None => unreachable!()
         }
     }
 
@@ -92,6 +92,7 @@ impl Language {
             Language::Python => false,
             Language::Javascript => false,
             Language::Typescript => false, // TS compiles to JS but is not executed as binary
+            Language::None => unreachable!(),
             _ => true
         }
     }
@@ -102,6 +103,7 @@ impl Language {
             Language::Javascript => "node main.js",
             Language::Typescript => "node main.ts", // TS compiles to JS but is not executed as binary
             Language::Csharp => "dotnet main.exe",
+            Language::None => unreachable!(),
             _ => "./main"
         }.to_string()
     }
