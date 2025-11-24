@@ -47,4 +47,6 @@ require (
     golang.org/x/tools v0.34.0 // indirect
     google.golang.org/protobuf v1.36.9 // indirect
     mellium.im/sasl v0.3.1 // indirect
+    gorm.io/gorm v1.25.12 //indirect
+    gorm.io/driver/postgres v1.5.9 //indirect
 )

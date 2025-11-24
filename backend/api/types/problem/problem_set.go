@@ -3,9 +3,30 @@ package problem
 import "backend/api/types/base"
 
 type ProblemSet struct {
-    base.BaseModel
+	base.BaseModel
 
-    Name           string     `json:"name"`
-    OrganisationID int64      `json:"organisation_id"`
-    Problems       []*Problem `json:"problems,omitempty" pg:"many2many:problem_problem_sets"`
+	Name           string  `json:"name" gorm:"size:255;not null"`
+	Description    *string `json:"description,omitempty" gorm:"type:text"`
+	OrganisationID int64   `json:"organisation_id" gorm:"not null;index"`
+	CreatedBy      *int64  `json:"created_by,omitempty" gorm:"index"`
+	IsPublished    bool    `json:"is_published" gorm:"default:false"`
+
+	// Relations
+	Problems    []*Problem               `json:"problems,omitempty" gorm:"many2many:problem_problem_sets"`
+	Enrollments []ProblemSetEnrollment   `json:"enrollments,omitempty" gorm:"foreignKey:ProblemSetID"`
+}
+
+// TableName spécifie le nom de la table
+func (ProblemSet) TableName() string {
+	return "problem_sets"
+}
+
+// ProblemCount retourne le nombre de problèmes
+func (ps *ProblemSet) ProblemCount() int {
+	return len(ps.Problems)
+}
+
+// EnrollmentCount retourne le nombre d'inscrits
+func (ps *ProblemSet) EnrollmentCount() int {
+	return len(ps.Enrollments)
 }
