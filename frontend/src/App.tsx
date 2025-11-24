@@ -4,10 +4,12 @@ import CodingPage from './pages/Coding/CodingPage'
 import LoginPage from './pages/Auth/LoginPage'
 import RegisterPage from './pages/Auth/RegisterPage'
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage'
+import Header from './components/header/Header'
 
 function App() {
     return (
         <BrowserRouter>
+            <Header />
             <Routes>
                 {/* Page d'accueil */}
                 <Route path="/" element={<HomePage />} />
