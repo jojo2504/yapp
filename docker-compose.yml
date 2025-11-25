@@ -110,3 +110,4 @@ volumes:
   postgres-data:
   rust-target:
   shared:
+
