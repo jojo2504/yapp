@@ -4,7 +4,7 @@ mod redis;
 mod task;
 mod request;
 
-use crate::{docker::DockerClient, request::ReqwestClient, models::Submission, redis::RedisService, task::process_submission};
+use crate::{docker::DockerClient, request::ReqwestClient, models::Submission, redis::RedisService, task::process_job};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         let mut docker_client_clone = docker_client.clone();
                         tokio::spawn(async move {
                             let _ = sem.acquire().await.unwrap();
-                            let _ = process_submission(&mut docker_client_clone, &submission).await;
+                            // let _ = process_submission(&mut docker_client_clone, &submission, Uuid).await;
                         });
                     }
                     None => {

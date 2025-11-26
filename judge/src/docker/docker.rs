@@ -1,3 +1,4 @@
+use core::panic;
 use std::time::Duration;
 
 use bollard::{Docker, container::LogOutput, exec::{CreateExecOptions, StartExecOptions, StartExecResults}, query_parameters::{CreateContainerOptionsBuilder, RemoveContainerOptions, StartContainerOptions, StopContainerOptions}, secret::ContainerCreateBody};
@@ -5,6 +6,45 @@ use tokio::time::timeout;
 use futures_util::stream::StreamExt;
 
 use crate::models::{Output, Submission};
+
+#[derive(Clone)]
+pub struct CommandConfig {
+    container_name: String,
+    options: CreateExecOptions<String>,
+    time_limit: Option<Duration>
+}
+
+impl CommandConfig {
+    pub fn new(container_name: &str, options: CreateExecOptions<String>) -> CommandConfigBuilder {
+        CommandConfigBuilder { 
+            container_name: container_name.to_owned(), 
+            options, 
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct CommandConfigBuilder {
+    container_name: String,
+    options: CreateExecOptions<String>,
+    time_limit: Option<Duration>
+}
+
+impl CommandConfigBuilder {
+    pub fn time_limit(mut self, time_limit: Duration) -> Self {
+        self.time_limit = Some(time_limit);
+        self
+    }
+
+    pub fn build(self) -> CommandConfig {
+        CommandConfig {
+            container_name: self.container_name,
+            options: self.options,
+            time_limit: self.time_limit,
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct DockerClient {
@@ -19,25 +59,26 @@ impl DockerClient {
     }
 
     /// call build to build/compile a code source
-    pub async fn build(&self, container_name: &str, submission: &Submission, time_limit: Option<Duration>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        self.run_command(container_name, vec!["bash".to_string(), "-c".to_string(), submission.language.build_command().expect("")], time_limit).await?;
+    pub async fn build(&self, submission: &Submission, mut config: CommandConfig) -> Result<Output, Box<dyn std::error::Error + Send + Sync>> {
+        config.options.cmd = Some(vec!["bash".to_string(), "-c".to_string(), submission.language.build_command().expect("")]);
+        let output = self.run_command(config, None).await?;
         // println!("finished building");
-        Ok(())
+        Ok(output)
     }
 
     /// file injection based on language
-    pub async fn prepare_file(&self, container_name: &str, submission: &Submission) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn prepare_file(&self, submission: &Submission, mut config: CommandConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let filename = format!("/tmp/main.{}", submission.language.extension());
         let source = &submission.source_code;
 
         // Create the file using cat with heredoc to handle multi-line content properly
-        let cmd = vec![
+        config.options.cmd = Some(vec![
             "bash".to_string(),
             "-c".to_string(),
             format!("cat > {} << 'EOFMARKER'\n{}\nEOFMARKER", filename, source),
-        ];
+        ]);
 
-        self.run_command(container_name, cmd, None).await?;
+        self.run_command(config, None).await?;
 
         Ok(())
     }
@@ -76,36 +117,38 @@ impl DockerClient {
     }
     
     /// default `time_limit` if not specified is 1 second
-    pub async fn run_command(&self, container_name: &str, command: Vec<String>, time_limit: Option<Duration>) -> Result<Output, Box<dyn std::error::Error + Send + Sync>> {
-        let config = CreateExecOptions {
-            cmd: Some(command),
-            attach_stdout: Some(true),
-            attach_stderr: Some(true),
-            working_dir: Some("/tmp".to_string()),  // Execute commands in /tmp
-            ..Default::default()
+    pub async fn run_command(&self, config: CommandConfig, inputs: Option<&str>) -> Result<Output, Box<dyn std::error::Error + Send + Sync>> {        
+        let exec = self.docker.create_exec(&config.container_name, config.options).await?;
+        
+        let stream = self.docker.start_exec(&exec.id, Some(StartExecOptions::default())).await?;
+        
+        // Handle stdin writing separately, then reconstruct for process_stream
+        let stream_for_processing = match stream {
+            StartExecResults::Attached { output, mut input } => {
+                // Write to stdin if inputs are provided
+                if let Some(input_data) = inputs {
+                    use tokio::io::AsyncWriteExt;
+                    input.write_all(input_data.as_bytes()).await?;
+                    input.shutdown().await?; // Close stdin to signal EOF
+                }
+                // Reconstruct StartExecResults with just the output stream
+                StartExecResults::Attached { output, input }
+            },
+            other => other,
         };
-        
-        // println!("running command");
-        let exec = self.docker.create_exec(container_name, config).await?;
-        
-        // Start the exec once and get the stream
-        let stream = self.docker.start_exec(&exec.id, Some(StartExecOptions { detach: false, ..Default::default() })).await?;
         
         // Apply timeout to the entire stream processing
         let container_output = match timeout(
-            time_limit.unwrap_or(Duration::from_secs(1)),
-            self.process_stream(stream, &exec.id)
+            config.time_limit.unwrap_or(Duration::from_secs(1)),
+            self.process_stream(stream_for_processing, &exec.id)
         ).await {
             Ok(result) => result?,
             Err(_) => {
-                let _ = self.delete_container(&container_name);
-                return Err(format!("Time limit exceeded {}", &container_name).into())
+                let _ = self.delete_container(&config.container_name);
+                return Err(format!("Time limit exceeded {}", &config.container_name).into())
             } 
         };
         
-        if !container_output.stderr_buf.is_none() {
-            eprintln!("container output stderr: {}", container_output.stderr_buf.as_ref().unwrap()[0])
-        }
         Ok(container_output)
     }
 
@@ -150,7 +193,6 @@ impl DockerClient {
             
         Ok(container_output)
     }
-
 
     pub async fn delete_container(&self, container_name: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let stop_opts = StopContainerOptions { t: Some(0), ..Default::default() };

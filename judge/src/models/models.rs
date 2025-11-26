@@ -121,12 +121,13 @@ pub enum Verdict {
     InternalError,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestCaseResult {
     pub test_case_id: u64,
     pub verdict: Verdict,
     pub execution_time: u32,
     pub memory_kb: u32,
+    pub stdout: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,7 +141,6 @@ pub struct Submission {
     pub message: Option<String>,
     pub execution_time: Option<u32>,
     pub memory_usage: Option<u32>,
-    pub judge_output: Option<String>,
     pub test_results: Option<Vec<TestCaseResult>>,
 }
 
@@ -224,7 +224,6 @@ impl SubmissionBuilder {
             message: self.message, 
             execution_time: self.execution_time, 
             memory_usage: self.memory_usage, 
-            judge_output: self.judge_output, 
             test_results: self.test_results 
         }
     }
