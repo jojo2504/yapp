@@ -83,7 +83,7 @@ pub async fn process_job(docker_client: &mut DockerClient, job: &mut Job, uuid: 
         };
         let config_input = CommandConfig::new(&container_name, options_input).build();
 
-        for (idx, test) in job.tests.iter().enumerate() {
+        for (idx, test) in job.problem.tests.iter().enumerate() {
             println!("inputs: {}", &test.input);
             let output = docker_client.run_command(
                 config_input.clone(),
@@ -126,7 +126,6 @@ pub async fn process_job(docker_client: &mut DockerClient, job: &mut Job, uuid: 
                 job.submission.test_results
                 .get_or_insert_with(Vec::new)
                 .push(TestCaseResult {
-                    test_case_id: test.problem_id,
                     verdict: verdict.clone(),
                     execution_time: 0,
                     memory_kb: 0,

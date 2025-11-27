@@ -65,7 +65,7 @@ impl FileInjector {
             fn main() {{
                 {stdin_parsing}
                 let result: {return_type} = Solution::{function_name}({params});
-                println!("{uuid} {{}}", result);
+                println!("{uuid} {{:?}}", result);
             }}
             "#
         );

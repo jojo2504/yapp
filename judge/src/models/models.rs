@@ -123,7 +123,6 @@ pub enum Verdict {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestCaseResult {
-    pub test_case_id: u64,
     pub verdict: Verdict,
     pub execution_time: u32,
     pub memory_kb: u32,
@@ -233,11 +232,11 @@ pub struct Problem {
     pub problem_id: u64,
     pub function_name: String,
     pub parameters: Vec<(String, Option<String>)>, // parameter's  name | type
-    pub return_type: String
+    pub return_type: String,
+    pub tests: Vec<TestCase> // test all testcases with the submitted code 
 }
 
 pub struct TestCase {
-    pub problem_id: u64,
 	pub input: String, // the json version of the input 
 	pub expected: String, // the json version of the output
 	pub hidden: bool
@@ -246,5 +245,4 @@ pub struct TestCase {
 pub struct Job {
     pub submission: Submission,
     pub problem: Problem,
-    pub tests: Vec<TestCase> // test all testcases with the submitted code 
 }
