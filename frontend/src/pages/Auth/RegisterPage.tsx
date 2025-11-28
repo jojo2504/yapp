@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import styles from '../../style/base.module.css'
+import { useAuth } from '../../context/AuthContext';
+import styles from '../../style/base.module.css';
 
 interface Organisation {
     id: number;
     name: string;
 }
 
+type UserRole = 'Student' | 'Teacher';
+
 export default function RegisterPage() {
+    const { register } = useAuth();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
         confirmPassword: '',
-        organisation_id: ''
+        organisation_id: '',
+        role: 'Student' as UserRole
     });
     const [organisations, setOrganisations] = useState<Organisation[]>([]);
     const [loading, setLoading] = useState(false);
@@ -31,7 +36,6 @@ export default function RegisterPage() {
                     const data = await response.json();
                     setOrganisations(data);
                 } else {
-                    // Fallback: si l'API n'existe pas encore, utiliser des données par défaut
                     setOrganisations([
                         { id: 1, name: 'EPITA' },
                         { id: 2, name: 'EPITECH' },
@@ -40,7 +44,6 @@ export default function RegisterPage() {
                 }
             } catch (err) {
                 console.error('Error fetching organisations:', err);
-                // Fallback en cas d'erreur
                 setOrganisations([
                     { id: 1, name: 'EPITA' },
                     { id: 2, name: 'EPITECH' },
@@ -59,7 +62,6 @@ export default function RegisterPage() {
             ...formData,
             [e.target.name]: e.target.value
         });
-        // Clear errors when user types
         if (error) setError('');
         if (validationErrors[e.target.name]) {
             setValidationErrors({
@@ -72,28 +74,23 @@ export default function RegisterPage() {
     const validateForm = () => {
         const errors: Record<string, string> = {};
 
-        // Name validation
         if (formData.name.length < 2) {
             errors.name = "Le nom doit contenir au moins 2 caractères";
         }
 
-        // Email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             errors.email = "Adresse email invalide";
         }
 
-        // Password validation
         if (formData.password.length < 8) {
             errors.password = "Le mot de passe doit contenir au moins 8 caractères";
         }
 
-        // Confirm password validation
         if (formData.password !== formData.confirmPassword) {
             errors.confirmPassword = "Les mots de passe ne correspondent pas";
         }
 
-        // Organisation validation
         if (!formData.organisation_id) {
             errors.organisation_id = "Veuillez sélectionner une organisation";
         }
@@ -112,44 +109,22 @@ export default function RegisterPage() {
         setLoading(true);
         setError('');
 
-        try {
-            const response = await fetch('http://localhost:8080/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: formData.name,
-                    email: formData.email,
-                    password: formData.password,
-                    organisation_id: parseInt(formData.organisation_id)
-                })
-            });
+        // Utiliser register() du AuthContext avec le rôle
+        const result = await register(
+            formData.name,
+            formData.email,
+            formData.password,
+            parseInt(formData.organisation_id),
+            formData.role
+        );
 
-            const data = await response.json();
-
-            if (response.ok) {
-                // Store tokens and user data
-                localStorage.setItem('access_token', data.access_token);
-                localStorage.setItem('refresh_token', data.refresh_token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                navigate('/profilepage');
-            } else {
-                // Handle specific error messages
-                if (response.status === 409) {
-                    setError("Cette adresse email est déjà utilisée");
-                } else if (response.status === 400) {
-                    setError(data.error || "Données invalides. Vérifiez vos informations.");
-                } else {
-                    setError(data.error || "Erreur lors de l'inscription");
-                }
-            }
-        } catch (err) {
-            setError('Erreur de connexion au serveur. Veuillez réessayer.');
-            console.error('Register error:', err);
-        } finally {
-            setLoading(false);
+        if (result.success) {
+            navigate('/');
+        } else {
+            setError(result.error || "Erreur lors de l'inscription");
         }
+
+        setLoading(false);
     };
 
     return (
@@ -173,20 +148,25 @@ export default function RegisterPage() {
                         justifyContent: 'center',
                         gap: '0.5rem'
                     }}>
+                        🎓
                     </div>
                     <h2 style={{
                         fontSize: '1.8rem',
                         marginBottom: '0.5rem',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        color: 'var(--text-primary)'
                     }}>
                         Créer un compte
                     </h2>
+                    <p className={styles.textSecondary}>
+                        Rejoignez la communauté Yapp !
+                    </p>
                 </div>
 
                 {/* Error Alert */}
                 {error && (
                     <div className={styles.alertError} style={{ marginBottom: '1.5rem' }}>
-                        {error}
+                        ⚠️ {error}
                     </div>
                 )}
 
@@ -196,14 +176,14 @@ export default function RegisterPage() {
                         {/* Name Field */}
                         <div className={styles.formGroup}>
                             <label htmlFor="name" className={styles.label}>
-                                Nom d'utilisateur
+                                Nom complet
                             </label>
                             <input
                                 type="text"
                                 id="name"
                                 name="name"
                                 className={`${styles.input} ${validationErrors.name ? styles.inputError : ''}`}
-                                placeholder="John Doe"
+                                placeholder="Jean Dupont"
                                 value={formData.name}
                                 onChange={handleChange}
                                 required
@@ -233,6 +213,94 @@ export default function RegisterPage() {
                             {validationErrors.email && (
                                 <p className={styles.errorMessage}>{validationErrors.email}</p>
                             )}
+                        </div>
+
+                        {/* Role Selection */}
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>
+                                Je suis un(e)
+                            </label>
+                            <div style={{
+                                display: 'flex',
+                                gap: '1rem',
+                                marginTop: '0.5rem'
+                            }}>
+                                <label
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        padding: '1rem',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: formData.role === 'Student'
+                                            ? '2px solid var(--accent-purple)'
+                                            : '1px solid var(--border-color)',
+                                        backgroundColor: formData.role === 'Student'
+                                            ? 'rgba(203, 166, 247, 0.1)'
+                                            : 'var(--bg-elevated)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="role"
+                                        value="Student"
+                                        checked={formData.role === 'Student'}
+                                        onChange={handleChange}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <span style={{ fontSize: '1.5rem' }}>📚</span>
+                                    <span style={{
+                                        fontWeight: formData.role === 'Student' ? '600' : '400',
+                                        color: formData.role === 'Student'
+                                            ? 'var(--accent-purple)'
+                                            : 'var(--text-secondary)'
+                                    }}>
+                                        Étudiant
+                                    </span>
+                                </label>
+
+                                <label
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        padding: '1rem',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: formData.role === 'Teacher'
+                                            ? '2px solid var(--accent-green)'
+                                            : '1px solid var(--border-color)',
+                                        backgroundColor: formData.role === 'Teacher'
+                                            ? 'rgba(166, 227, 161, 0.1)'
+                                            : 'var(--bg-elevated)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="role"
+                                        value="Teacher"
+                                        checked={formData.role === 'Teacher'}
+                                        onChange={handleChange}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <span style={{ fontSize: '1.5rem' }}>👨‍🏫</span>
+                                    <span style={{
+                                        fontWeight: formData.role === 'Teacher' ? '600' : '400',
+                                        color: formData.role === 'Teacher'
+                                            ? 'var(--accent-green)'
+                                            : 'var(--text-secondary)'
+                                    }}>
+                                        Professeur
+                                    </span>
+                                </label>
+                            </div>
                         </div>
 
                         {/* Organisation Field */}
@@ -343,11 +411,20 @@ export default function RegisterPage() {
                             style={{ width: '100%', marginBottom: '1rem' }}
                             disabled={loading}
                         >
-                            {loading ? 'Création du compte...' : 'Créer mon compte'}
+                            {loading ? '⏳ Création du compte...' : '🚀 Créer mon compte'}
                         </button>
 
                         {/* Divider */}
-                        <div className={styles.divider}></div>
+                        <div className={styles.divider} style={{ margin: '1.5rem 0' }}>
+                            <span style={{
+                                padding: '0 1rem',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.85rem'
+                            }}>
+                                ou
+                            </span>
+                        </div>
 
                         {/* Social Login */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

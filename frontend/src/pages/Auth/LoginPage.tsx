@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import styles from '../../style/base.module.css'
 
 export default function LoginPage() {
-    const { login } = useAuth();
+    const { login } = useAuth();  // ✅ On utilise le login du context
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
@@ -26,46 +26,28 @@ export default function LoginPage() {
         setLoading(true);
         setError('');
 
-        try {
-            const response = await fetch('http://localhost:8080/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: formData.email,
-                    password: formData.password
-                })
-            });
+        // ✅ Utiliser login() du AuthContext au lieu de fetch manuel
+        const result = await login(formData.email, formData.password);
 
-            const data = await response.json();
-
-            if (response.ok) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                navigate('/ProfilePage');
-            } else {
-                setError(data.message || 'Email ou mot de passe incorrect');
-            }
-        } catch (err) {
-            setError('Erreur de connexion au serveur. Veuillez réessayer.');
-            console.error('Login error:', err);
-        } finally {
-            setLoading(false);
+        if (result.success) {
+            navigate('/');  // Rediriger vers l'accueil
+        } else {
+            setError(result.error || 'Email ou mot de passe incorrect');
         }
+
+        setLoading(false);
     };
 
     return (
-        <div className="flexCenter" style={{
+        <div className={styles.flexCenter} style={{
             minHeight: '100vh',
             padding: '2rem',
             backgroundColor: 'var(--bg-primary)'
         }}>
-            <div className="card" style={{
+            <div className={styles.card} style={{
                 maxWidth: '450px',
                 width: '100%',
                 margin: '0 auto',
-
             }}>
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -77,23 +59,25 @@ export default function LoginPage() {
                         justifyContent: 'center',
                         gap: '0.5rem'
                     }}>
+                        🎓
                     </div>
                     <h2 style={{
                         fontSize: '1.8rem',
                         marginBottom: '0.5rem',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        color: 'var(--text-primary)'
                     }}>
                         Connexion
                     </h2>
-                    <p className="textSecondary">
+                    <p className={styles.textSecondary}>
                         Bon retour parmi nous !
                     </p>
                 </div>
 
                 {/* Error Alert */}
                 {error && (
-                    <div className="alertError" style={{ marginBottom: '1.5rem' }}>
-                        {error}
+                    <div className={styles.alertError} style={{ marginBottom: '1.5rem' }}>
+                        ⚠️ {error}
                     </div>
                 )}
 
@@ -146,8 +130,8 @@ export default function LoginPage() {
                             }}>
                                 <input type="checkbox" />
                                 <span className={styles.textSecondary} style={{ fontSize: '0.9rem' }}>
-                        Se souvenir de moi
-                    </span>
+                                    Se souvenir de moi
+                                </span>
                             </label>
                             <Link
                                 to="/auth/forgot-password"
@@ -163,17 +147,25 @@ export default function LoginPage() {
 
                         {/* Submit Button */}
                         <button
-                            type="button"
-                            onClick={handleSubmit}
+                            type="submit"
                             className={`${styles.btn} ${styles.btnPrimary}`}
                             style={{ width: '100%', marginBottom: '1rem' }}
                             disabled={loading}
                         >
-                            {loading ? 'Connexion...' : 'Se connecter'}
+                            {loading ? '⏳ Connexion...' : '🔐 Se connecter'}
                         </button>
 
                         {/* Divider */}
-                        <div className={styles.divider}></div>
+                        <div className={styles.divider} style={{ margin: '1.5rem 0' }}>
+                            <span style={{
+                                padding: '0 1rem',
+                                backgroundColor: 'var(--bg-secondary)',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.85rem'
+                            }}>
+                                ou
+                            </span>
+                        </div>
 
                         {/* Social Login */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -207,7 +199,7 @@ export default function LoginPage() {
 
                 {/* Sign Up Link */}
                 <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                    <span className="textSecondary">Pas encore de compte ? </span>
+                    <span className={styles.textSecondary}>Pas encore de compte ? </span>
                     <Link
                         to="/auth/register"
                         style={{

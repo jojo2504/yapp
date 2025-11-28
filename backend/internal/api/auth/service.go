@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"backend/api/types/base"
+	"backend/api/types/organisation"
+	"backend/api/types/session"
+	"backend/api/types/user"
 	"backend/internal/api/middleware"
-	"backend/api/types"
 	"errors"
 	"time"
 
@@ -10,26 +13,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// User model
+// ============================================================================
+// REQUEST DTOs (only define what doesn't exist in types)
+// ============================================================================
 
-
-// Session model
-type Session struct {
-	ID        int64          `json:"id" gorm:"primaryKey"`
-	UserID    int64          `json:"user_id"`
-	Token     string         `json:"token"`
-	ExpiresAt time.Time      `json:"expires_at"`
-	CreatedAt time.Time      `json:"created_at"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
-}
-
-// Organisation model (minimal for checking)
-type Organisation struct {
-	ID   int64  `json:"id" gorm:"primaryKey"`
-	Name string `json:"name"`
-}
-
-// Request DTOs
 type RegisterRequest struct {
 	Name           string `json:"name" binding:"required,min=2,max=100"`
 	Email          string `json:"email" binding:"required,email"`
@@ -46,7 +33,10 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-// Response DTOs
+// ============================================================================
+// RESPONSE DTOs
+// ============================================================================
+
 type AuthResponse struct {
 	User         UserResponse `json:"user"`
 	AccessToken  string       `json:"access_token"`
@@ -66,7 +56,10 @@ type UserResponse struct {
 	CreatedAt      string  `json:"created_at"`
 }
 
-// Service
+// ============================================================================
+// SERVICE
+// ============================================================================
+
 type Service struct {
 	db *gorm.DB
 }
@@ -75,16 +68,20 @@ func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }
 
+// ============================================================================
+// METHODS
+// ============================================================================
+
 // Register creates a new user
 func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 	// Check if email already exists
-	var existingUser User
+	var existingUser user.User
 	if err := s.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
 		return nil, errors.New("email already registered")
 	}
 
 	// Check if organisation exists
-	var org Organisation
+	var org organisation.Organisation
 	if err := s.db.First(&org, req.OrganisationID).Error; err != nil {
 		return nil, errors.New("organisation not found")
 	}
@@ -95,46 +92,51 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 		return nil, errors.New("failed to hash password")
 	}
 
-	// Create user
-	user := User{
+	// Create user with existing type
+	orgID := req.OrganisationID
+	newUser := user.User{
+		BaseModel: base.BaseModel{
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 		Name:           req.Name,
 		Email:          req.Email,
 		PasswordHash:   string(hashedPassword),
-		Role:           "Student",
-		OrganisationID: req.OrganisationID,
+		Role:           user.Student,
+		OrganisationID: &orgID,
 		IsActive:       true,
 		EmailVerified:  false,
 	}
 
-	if err := s.db.Create(&user).Error; err != nil {
+	if err := s.db.Create(&newUser).Error; err != nil {
 		return nil, errors.New("failed to create user")
 	}
 
 	// Generate tokens
-	return s.generateAuthResponse(&user)
+	return s.generateAuthResponse(&newUser)
 }
 
 // Login authenticates a user
 func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
-	var user User
-	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+	var u user.User
+	if err := s.db.Where("email = ?", req.Email).First(&u).Error; err != nil {
 		return nil, errors.New("invalid email or password")
 	}
 
-	if !user.IsActive {
+	if !u.IsActive {
 		return nil, errors.New("account is deactivated")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); err != nil {
 		return nil, errors.New("invalid email or password")
 	}
 
-	return s.generateAuthResponse(&user)
+	return s.generateAuthResponse(&u)
 }
 
 // Logout invalidates a session
 func (s *Service) Logout(userID int64, token string) error {
-	return s.db.Where("user_id = ? AND token = ?", userID, token).Delete(&Session{}).Error
+	return s.db.Where("user_id = ? AND token = ?", userID, token).Delete(&session.Session{}).Error
 }
 
 // RefreshToken generates new tokens
@@ -145,78 +147,92 @@ func (s *Service) RefreshToken(refreshToken string) (*AuthResponse, error) {
 	}
 
 	// Check session exists
-	var session Session
-	if err := s.db.Where("user_id = ? AND token = ?", claims.UserID, refreshToken).First(&session).Error; err != nil {
+	var sess session.Session
+	if err := s.db.Where("user_id = ? AND token = ?", claims.UserID, refreshToken).First(&sess).Error; err != nil {
 		return nil, errors.New("session not found")
 	}
 
-	if session.ExpiresAt.Before(time.Now()) {
+	if sess.ExpiresAt.Before(time.Now()) {
 		return nil, errors.New("refresh token expired")
 	}
 
 	// Get user
-	var user User
-	if err := s.db.First(&user, claims.UserID).Error; err != nil {
+	var u user.User
+	if err := s.db.First(&u, claims.UserID).Error; err != nil {
 		return nil, errors.New("user not found")
 	}
 
 	// Delete old session
-	s.db.Delete(&session)
+	s.db.Delete(&sess)
 
-	return s.generateAuthResponse(&user)
+	return s.generateAuthResponse(&u)
 }
 
 // GetCurrentUser returns the current user
 func (s *Service) GetCurrentUser(userID int64) (*UserResponse, error) {
-	var user User
-	if err := s.db.First(&user, userID).Error; err != nil {
+	var u user.User
+	if err := s.db.First(&u, userID).Error; err != nil {
 		return nil, errors.New("user not found")
 	}
 
+	var orgID int64 = 0
+	if u.OrganisationID != nil {
+		orgID = *u.OrganisationID
+	}
+
 	return &UserResponse{
-		ID:             user.ID,
-		Name:           user.Name,
-		Email:          user.Email,
-		Role:           user.Role,
-		OrganisationID: user.OrganisationID,
-		AvatarURL:      user.AvatarURL,
-		IsActive:       user.IsActive,
-		EmailVerified:  user.EmailVerified,
-		CreatedAt:      user.CreatedAt.Format(time.RFC3339),
+		ID:             u.ID,
+		Name:           u.Name,
+		Email:          u.Email,
+		Role:           string(u.Role),
+		OrganisationID: orgID,
+		AvatarURL:      u.AvatarURL,
+		IsActive:       u.IsActive,
+		EmailVerified:  u.EmailVerified,
+		CreatedAt:      u.CreatedAt.Format(time.RFC3339),
 	}, nil
 }
 
 // Helper to generate auth response with tokens
-func (s *Service) generateAuthResponse(user *User) (*AuthResponse, error) {
-	accessToken, err := middleware.GenerateToken(user.ID, user.Email, user.Role, user.OrganisationID)
+func (s *Service) generateAuthResponse(u *user.User) (*AuthResponse, error) {
+	var orgID int64 = 0
+	if u.OrganisationID != nil {
+		orgID = *u.OrganisationID
+	}
+
+	accessToken, err := middleware.GenerateToken(u.ID, u.Email, string(u.Role), orgID)
 	if err != nil {
 		return nil, errors.New("failed to generate access token")
 	}
 
-	refreshToken, err := middleware.GenerateRefreshToken(user.ID, user.Email, user.Role, user.OrganisationID)
+	refreshToken, err := middleware.GenerateRefreshToken(u.ID, u.Email, string(u.Role), orgID)
 	if err != nil {
 		return nil, errors.New("failed to generate refresh token")
 	}
 
-	// Save session
-	session := Session{
-		UserID:    user.ID,
+	// Save session using existing session type
+	sess := session.Session{
+		BaseModel: base.BaseModel{
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		UserID:    u.ID,
 		Token:     refreshToken,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 	}
-	s.db.Create(&session)
+	s.db.Create(&sess)
 
 	return &AuthResponse{
 		User: UserResponse{
-			ID:             user.ID,
-			Name:           user.Name,
-			Email:          user.Email,
-			Role:           user.Role,
-			OrganisationID: user.OrganisationID,
-			AvatarURL:      user.AvatarURL,
-			IsActive:       user.IsActive,
-			EmailVerified:  user.EmailVerified,
-			CreatedAt:      user.CreatedAt.Format(time.RFC3339),
+			ID:             u.ID,
+			Name:           u.Name,
+			Email:          u.Email,
+			Role:           string(u.Role),
+			OrganisationID: orgID,
+			AvatarURL:      u.AvatarURL,
+			IsActive:       u.IsActive,
+			EmailVerified:  u.EmailVerified,
+			CreatedAt:      u.CreatedAt.Format(time.RFC3339),
 		},
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
