@@ -20,10 +20,21 @@ services:
       - ./backend:/app
     ports:
       - "8080:8080"
-    stop_grace_period: 2s # Workaround for the cargo watch signals taking 10s to stop
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=yapp
+      - DB_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    stop_grace_period: 2s
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   rust-judge:
     build:
@@ -34,7 +45,7 @@ services:
       - rust-target:/judge/target
       - /var/run/docker.sock:/var/run/docker.sock
       - shared:/shared
-    stop_grace_period: 2s # Workaround for the cargo watch signals taking 10s to stop
+    stop_grace_period: 2s
     depends_on:
       - backend-go
 
@@ -52,27 +63,51 @@ services:
       - backend-go
 
   redis:
-    image: redis:8.2.3
+    image: redis:7-alpine
     volumes:
       - redis-data:/data
     restart: always
     ports:
       - "6379:6379"
     command: redis-server
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   postgres:
-    image: postgres
+    image: postgres:16-alpine
     env_file: ".env"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: yapp
       PGDATA: /data/postgres
-      POSTGRES_DB: database
     volumes:
       - postgres-data:/data/postgres
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d yapp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Interface web pour gérer la BDD (dev only)
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+    profiles:
+      - dev
 
 volumes:
   redis-data:
   postgres-data:
   rust-target:
   shared:
+
