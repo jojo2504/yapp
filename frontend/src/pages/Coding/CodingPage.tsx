@@ -1,562 +1,627 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Editor from "@monaco-editor/react";
-import styles from '../../pages/Coding/CodingPage.module.css';
+import styles from './CodingPage.module.css';
+import type {
+    Problem,
+    SubmissionResponse,
+    Language,
+    Difficulty,
+    Verdict
+} from '../../types';
 
-interface Problem {
-    id: number;
-    title: string;
-    difficulty: 'Easy' | 'Medium' | 'Hard';
-    description: string;
-    examples: Array<{
-        input: string;
-        output: string;
-        explanation?: string;
-    }>;
-    constraints: string[];
-}
-
-// Problème exemple
-const mockProblem: Problem = {
-    id: 101,
+// Mock problem for testing
+const MOCK_PROBLEM: Problem = {
+    id: 1,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     title: "Two Sum",
-    difficulty: "Easy",
-    description: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice. You can return the answer in any order.",
-    examples: [
+    description: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice.",
+    language: 'Python',
+    difficulty: 'easy',
+    time_limit_ms: 2000,
+    memory_limit_mb: 50,
+    author_id: 1,
+    points: 10,
+    test_cases: [
         {
+            id: 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            problem_id: 1,
             input: "nums = [2,7,11,15], target = 9",
-            output: "[0,1]",
-            explanation: "Because nums[0] + nums[1] == 9, we return [0, 1]."
+            expected: "[0,1]",
+            hidden: false,
+            position: 1
         },
         {
+            id: 2,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            problem_id: 1,
             input: "nums = [3,2,4], target = 6",
-            output: "[1,2]"
+            expected: "[1,2]",
+            hidden: false,
+            position: 2
         }
-    ],
-    constraints: [
-        "2 <= nums.length <= 10⁴",
-        "-10⁹ <= nums[i] <= 10⁹",
-        "-10⁹ <= target <= 10⁹",
-        "Only one valid answer exists."
     ]
 };
 
-interface ChatMessage {
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: Date;
+const STARTER_CODE: Record<string, string> = {
+    python: "# Écrivez votre solution ici\ndef solution():\n    pass\n",
+    javascript: "// Écrivez votre solution ici\nfunction solution() {\n    \n}\n",
+    typescript: "// Écrivez votre solution ici\nfunction solution(): void {\n    \n}\n",
+    java: "public class Solution {\n    public void solution() {\n        \n    }\n}\n",
+    cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n",
+    csharp: "using System;\n\npublic class Solution {\n    public void Solve() {\n        \n    }\n}\n",
+    go: "package main\n\nfunc main() {\n    \n}\n",
+    rust: "fn main() {\n    \n}\n"
+};
+
+const LANGUAGE_MAP: Record<Language, string> = {
+    'Python': 'python',
+    'Rust': 'rust',
+    'Csharp': 'csharp',
+    'C': 'c',
+    'Cpp': 'cpp',
+    'Javascript': 'javascript',
+    'Typescript': 'typescript',
+    'Go': 'go',
+    'Java': 'java',
+    'Swift': 'swift'
+};
+
+// Reverse map for language selection
+const REVERSE_LANGUAGE_MAP: Record<string, Language> = {
+    'python': 'Python',
+    'rust': 'Rust',
+    'csharp': 'Csharp',
+    'c': 'C',
+    'cpp': 'Cpp',
+    'javascript': 'Javascript',
+    'typescript': 'Typescript',
+    'go': 'Go',
+    'java': 'Java',
+    'swift': 'Swift'
+};
+
+interface SubmissionResult extends SubmissionResponse {
+    verdict: Verdict;
 }
 
-export default function CodeEditorPage() {
-    // États pour le code
-    const [code, setCode] = useState('// Écrivez votre code ici...\n');
-    const [language, setLanguage] = useState('python');
+function CodingPage() {
+    const {problemId} = useParams<{ problemId?: string }>();
+    const navigate = useNavigate();
+
+    // Problem state
+    const [problem, setProblem] = useState<Problem | null>(null);
+    const [loadingProblem, setLoadingProblem] = useState(true);
+
+    // Editor state
+    const [code, setCode] = useState('');
+    const [language, setLanguage] = useState<Language>('Python');
+    const [monacoLanguage, setMonacoLanguage] = useState('python');
+    const [theme, setTheme] = useState<'vs-dark' | 'light'>('vs-dark');
+    const [fontSize, setFontSize] = useState(14);
+
+    // Submission state
     const [output, setOutput] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null);
+    const [activeTab, setActiveTab] = useState<'output' | 'testcases'>('output');
 
-    // États pour le layout
-    const [problemWidth, setProblemWidth] = useState(30); // %
-    const [editorHeight, setEditorHeight] = useState(60); // %
-    const [chatWidth, setChatWidth] = useState(25); // %
+    // Layout state
+    const [leftPanelWidth, setLeftPanelWidth] = useState(35);
+    const [bottomPanelHeight, setBottomPanelHeight] = useState(30);
+    useRef<never>(null);
+// Fetch problem on mount
+    useEffect(() => {
+        const fetchProblem = async () => {
+            if (!problemId) {
+                // Use mock problem if no ID
+                setProblem(MOCK_PROBLEM);
+                setCode(MOCK_PROBLEM.starter_code || STARTER_CODE['python']);
+                setLanguage('Python');
+                setMonacoLanguage('python');
+                setLoadingProblem(false);
+                return;
+            }
 
-    // États pour les sections maximisées
-    const [maximizedSection, setMaximizedSection] = useState<'problem' | 'editor' | 'chat' | 'output' | null>(null);
+            try {
+                const response = await fetch(`http://localhost:8080/api/problems/${problemId}`);
+                if (response.ok) {
+                    const data: Problem = await response.json();
+                    setProblem(data);
 
-    // État pour le chat
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'assistant', content: 'Bonjour ! Je suis là pour vous aider avec ce problème. Posez-moi vos questions !', timestamp: new Date() }
-    ]);
-    const [chatInput, setChatInput] = useState('');
-    const [chatLoading, setChatLoading] = useState(false);
-
-    const editorRef = useRef<any>(null);
-    const chatEndRef = useRef<HTMLDivElement>(null);
-
-    // Gestion du redimensionnement
-    const handleProblemResize = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startWidth = problemWidth;
-
-        const handleMouseMove = (e: MouseEvent) => {
-            const delta = ((e.clientX - startX) / window.innerWidth) * 100;
-            const newWidth = Math.max(20, Math.min(50, startWidth + delta));
-            setProblemWidth(newWidth);
+                    const monacoLang = LANGUAGE_MAP[data.language];
+                    setMonacoLanguage(monacoLang);
+                    setLanguage(data.language);
+                    setCode(data.starter_code || STARTER_CODE[monacoLang] || '');
+                } else {
+                    // Fallback to mock
+                    setProblem(MOCK_PROBLEM);
+                    setCode(STARTER_CODE['python']);
+                    setLanguage('Python');
+                    setMonacoLanguage('python');
+                }
+            } catch (error) {
+                console.error('Error fetching problem:', error);
+                setProblem(MOCK_PROBLEM);
+                setCode(STARTER_CODE['python']);
+                setLanguage('Python');
+                setMonacoLanguage('python');
+            } finally {
+                setLoadingProblem(false);
+            }
         };
 
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
+        fetchProblem();
+    }, [problemId]);
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+    // Handle language change
+    const handleLanguageChange = (newLanguage: string) => {
+        const typedLanguage = REVERSE_LANGUAGE_MAP[newLanguage] as Language;
+        setLanguage(typedLanguage);
+        setMonacoLanguage(newLanguage);
+        setCode(STARTER_CODE[newLanguage] || '');
     };
 
-    const handleEditorResize = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const startY = e.clientY;
-        const startHeight = editorHeight;
-
-        const handleMouseMove = (e: MouseEvent) => {
-            const delta = ((e.clientY - startY) / window.innerHeight) * 100;
-            const newHeight = Math.max(30, Math.min(80, startHeight + delta));
-            setEditorHeight(newHeight);
-        };
-
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    };
-
-    const handleChatResize = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startWidth = chatWidth;
-
-        const handleMouseMove = (e: MouseEvent) => {
-            const delta = ((startX - e.clientX) / window.innerWidth) * 100;
-            const newWidth = Math.max(20, Math.min(40, startWidth + delta));
-            setChatWidth(newWidth);
-        };
-
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    };
-
-    // Gestion de l'éditeur
-    const handleEditorChange = (value: string | undefined) => {
+    // Handle code change
+    const handleCodeChange = (value: string | undefined) => {
         setCode(value || '');
     };
 
-    const handleEditorMount = (editor: any) => {
-        editorRef.current = editor;
-    };
-
+    // Submit code
     const handleSubmit = async () => {
-        setLoading(true);
-        setError(false);
+        if (!problem) return;
+
+        setSubmitting(true);
         setOutput('');
+        setSubmissionResult(null);
 
         try {
-            const submission = {
-                user_id: 42,
-                problem_id: mockProblem.id,
+            const token = localStorage.getItem('access_token');
+            const submissionPayload = {
+                problem_id: problem.id,
+                language: language,
+                source_code: code
+            };
+
+            const response = await fetch('http://localhost:8080/api/submissions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && {'Authorization': `Bearer ${token}`})
+                },
+                body: JSON.stringify(submissionPayload)
+            });
+
+            const data: SubmissionResponse = await response.json();
+
+            if (response.ok) {
+                setSubmissionResult(data as SubmissionResult);
+                setOutput(formatSubmissionResult(data));
+                setActiveTab('output');
+            } else {
+                setOutput(`Erreur: ${(data as any).error || 'Erreur lors de la soumission'}`);
+            }
+        } catch (error) {
+            setOutput(`Erreur de connexion: ${(error as Error).message}`);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Run code (test without submitting)
+    const handleRun = async () => {
+        if (!problem) return;
+
+        setSubmitting(true);
+        setOutput('Exécution en cours...');
+
+        try {
+            const submitPayload = {
+                problem_id: problem.id,
                 language: language,
                 source_code: code,
+                user_id: 0 // Default user ID when not authenticated
             };
 
             const response = await fetch('http://localhost:8080/api/submit', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(submission)
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(submitPayload)
             });
 
+            const data: any = await response.json();
+
             if (response.ok) {
-                const data = await response.json();
                 setOutput(data.output || 'Code exécuté avec succès ✓');
-                setError(false);
             } else {
-                setOutput('Erreur lors de l\'exécution du code');
-                setError(true);
+                setOutput(`Erreur: ${data.error || 'Erreur lors de l\'exécution'}`);
             }
         } catch (error) {
-            setOutput('Erreur: ' + (error as Error).message);
-            setError(true);
+            setOutput(`Erreur: ${(error as Error).message}`);
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
-    const handleClear = () => {
-        setCode('// Écrivez votre code ici...\n');
-        setOutput('');
-        setError(false);
+    // Format submission result
+    const formatSubmissionResult = (result: SubmissionResponse): string => {
+        let output = `═══════════════════════════════════════\n`;
+        output += `  RÉSULTAT: ${getVerdictDisplay(result.verdict)}\n`;
+        output += `═══════════════════════════════════════\n\n`;
+
+        if (result.execution_time_ms) {
+            output += `⏱️  Temps d'exécution: ${result.execution_time_ms} ms\n`;
+        }
+        if (result.memory_usage_kb) {
+            output += `💾 Mémoire utilisée: ${result.memory_usage_kb} KB\n`;
+        }
+        if (result.score !== undefined) {
+            output += `⭐ Score: ${result.score} points\n`;
+        }
+
+        if (result.error_message) {
+            output += `\n❌ Erreur:\n${result.error_message}\n`;
+        }
+
+        if (result.test_case_results && result.test_case_results.length > 0) {
+            output += `\n───────────────────────────────────────\n`;
+            output += `  Tests: ${result.test_case_results.filter(t => t.passed).length}/${result.test_case_results.length} passés\n`;
+            output += `───────────────────────────────────────\n`;
+        }
+
+        return output;
     };
 
-    // Gestion du chat
-    const handleSendMessage = async () => {
-        if (!chatInput.trim() || chatLoading) return;
+    // Get verdict display
+    const getVerdictDisplay = (verdict: Verdict): string => {
+        const verdicts: Record<Verdict, string> = {
+            'Accepted': '✅ ACCEPTÉ',
+            'WrongAnswer': '❌ MAUVAISE RÉPONSE',
+            'TimeLimitExceeded': '⏰ TEMPS DÉPASSÉ',
+            'MemoryLimitExceeded': '💾 MÉMOIRE DÉPASSÉE',
+            'RuntimeError': '💥 ERREUR D\'EXÉCUTION',
+            'CompilationError': '🔧 ERREUR DE COMPILATION',
+            'Pending': '⏳ EN ATTENTE',
+            'Running': '🔄 EN COURS'
+        };
+        return verdicts[verdict];
+    };
 
-        const userMessage: ChatMessage = {
-            role: 'user',
-            content: chatInput,
-            timestamp: new Date()
+    // Get difficulty color
+    const getDifficultyColor = (difficulty: Difficulty): string => {
+        switch (difficulty) {
+            case 'easy':
+                return '#00b8a3';
+            case 'medium':
+                return '#ffc01e';
+            case 'hard':
+                return '#ef4743';
+            default:
+                return '#646cff';
+        }
+    };
+
+    // Get difficulty label
+    const getDifficultyLabel = (difficulty: Difficulty): string => {
+        switch (difficulty) {
+            case 'easy':
+                return 'Facile';
+            case 'medium':
+                return 'Moyen';
+            case 'hard':
+                return 'Difficile';
+            default:
+                return difficulty;
+        }
+    };
+
+    // Handle panel resize
+    const handleLeftResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = leftPanelWidth;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const delta = ((e.clientX - startX) / window.innerWidth) * 100;
+            setLeftPanelWidth(Math.max(20, Math.min(50, startWidth + delta)));
         };
 
-        setMessages([...messages, userMessage]);
-        setChatInput('');
-        setChatLoading(true);
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
 
-        // Simuler une réponse (remplacer par un vrai appel API)
-        setTimeout(() => {
-            const assistantMessage: ChatMessage = {
-                role: 'assistant',
-                content: 'Je comprends votre question. Pour résoudre ce problème, vous pouvez utiliser un dictionnaire pour stocker les valeurs déjà vues...',
-                timestamp: new Date()
-            };
-            setMessages(prev => [...prev, assistantMessage]);
-            setChatLoading(false);
-            chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 1000);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendMessage();
+    const handleBottomResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startY = e.clientY;
+        const startHeight = bottomPanelHeight;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const delta = ((startY - e.clientY) / window.innerHeight) * 100;
+            setBottomPanelHeight(Math.max(15, Math.min(50, startHeight + delta)));
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    // Reset code
+    const handleReset = () => {
+        if (problem?.starter_code) {
+            setCode(problem.starter_code);
+        } else {
+            setCode(STARTER_CODE[monacoLanguage] || '');
         }
     };
 
-    const toggleMaximize = (section: 'problem' | 'editor' | 'chat' | 'output') => {
-        setMaximizedSection(maximizedSection === section ? null : section);
-    };
-
-    const getDifficultyColor = (difficulty: string) => {
-        switch (difficulty) {
-            case 'Easy': return '#00b8a3';
-            case 'Medium': return '#ffc01e';
-            case 'Hard': return '#ef4743';
-            default: return '#646cff';
-        }
-    };
-
-    // Vue maximisée
-    if (maximizedSection) {
+    if (loadingProblem) {
         return (
-            <div className={styles.maximizedContainer}>
-                <div className={styles.maximizedHeader}>
-                    <h3>{maximizedSection.toUpperCase()}</h3>
-                    <button
-                        className={styles.maximizeBtn}
-                        onClick={() => setMaximizedSection(null)}
-                    >
-                        ✕ Réduire
-                    </button>
-                </div>
-                <div className={styles.maximizedContent}>
-                    {maximizedSection === 'problem' && (
-                        <ProblemSection problem={mockProblem} getDifficultyColor={getDifficultyColor} />
-                    )}
-                    {maximizedSection === 'editor' && (
-                        <>
-                            <div className={styles.editorControls}>
-                                <select
-                                    value={language}
-                                    onChange={(e) => setLanguage(e.target.value)}
-                                    className={styles.languageSelect}
-                                >
-                                    <option value="javascript">JavaScript</option>
-                                    <option value="typescript">TypeScript</option>
-                                    <option value="python">Python</option>
-                                    <option value="java">Java</option>
-                                    <option value="cpp">C++</option>
-                                    <option value="csharp">C#</option>
-                                </select>
-                                <button className={styles.runBtn} onClick={handleSubmit} disabled={loading}>
-                                    {loading ? '⏳ Exécution...' : '▶ Exécuter'}
-                                </button>
-                                <button className={styles.clearBtn} onClick={handleClear}>
-                                    🗑 Effacer
-                                </button>
-                            </div>
-                            <Editor
-                                height="calc(100% - 60px)"
-                                language={language}
-                                value={code}
-                                onChange={handleEditorChange}
-                                onMount={handleEditorMount}
-                                theme="vs-dark"
-                                options={{
-                                    minimap: { enabled: true },
-                                    fontSize: 14,
-                                    lineNumbers: 'on',
-                                    scrollBeyondLastLine: false,
-                                    automaticLayout: true,
-                                }}
-                            />
-                        </>
-                    )}
-                    {maximizedSection === 'chat' && (
-                        <ChatSection
-                            messages={messages}
-                            chatInput={chatInput}
-                            setChatInput={setChatInput}
-                            handleKeyPress={handleKeyPress}
-                            handleSendMessage={handleSendMessage}
-                            chatLoading={chatLoading}
-                            chatEndRef={chatEndRef}
-                        />
-                    )}
-                    {maximizedSection === 'output' && (
-                        <OutputSection output={output} error={error} />
-                    )}
-                </div>
+            <div className={styles.loadingContainer}>
+                <div className={styles.spinner}></div>
+                <p>Chargement du problème...</p>
             </div>
         );
     }
 
-    // Vue normale avec toutes les sections
-    // @ts-ignore
+    if (!problem) {
+        return (
+            <div className={styles.errorContainer}>
+                <h2>❌ Problème non trouvé</h2>
+                <p>Le problème demandé n'existe pas ou a été supprimé.</p>
+                <button onClick={() => navigate('/problems')} className={styles.backButton}>
+                    ← Retour aux problèmes
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className={styles.container}>
-            {/* Section Problème (Gauche) */}
-            <div
-                className={styles.problemPanel}
-                style={{ width: `${problemWidth}%` }}
-            >
-                <div className={styles.panelHeader}>
-                    <h3>📋 Énoncé du Problème</h3>
-                    <button
-                        className={styles.maximizeBtn}
-                        onClick={() => toggleMaximize('problem')}
-                        title="Agrandir"
-                    >
-                        ⛶
-                    </button>
+            {/* Left Panel - Problem Description */}
+            <div className={styles.leftPanel} style={{width: `${leftPanelWidth}%`}}>
+                <div className={styles.problemHeader}>
+                    <div className={styles.problemTitleRow}>
+                        <h1 className={styles.problemTitle}>
+                            {problem.id}. {problem.title}
+                        </h1>
+                        <span
+                            className={styles.difficultyBadge}
+                            style={{backgroundColor: getDifficultyColor(problem.difficulty)}}
+                        >
+                            {getDifficultyLabel(problem.difficulty)}
+                        </span>
+                    </div>
+                    <div className={styles.problemMeta}>
+                        <span>⏱️ {problem.time_limit_ms}ms</span>
+                        <span>💾 {problem.memory_limit_mb}MB</span>
+                        <span>⭐ {problem.points} pts</span>
+                    </div>
                 </div>
-                <div className={styles.panelContent}>
-                    <ProblemSection problem={mockProblem} getDifficultyColor={getDifficultyColor} />
+
+                <div className={styles.problemContent}>
+                    <section className={styles.section}>
+                        <h3>📝 Description</h3>
+                        <div className={styles.description}>
+                            {problem.description.split('\n').map((line, i) => (
+                                <p key={i}>{line}</p>
+                            ))}
+                        </div>
+                    </section>
+
+                    {problem.test_cases && problem.test_cases.filter(tc => !tc.hidden).length > 0 && (
+                        <section className={styles.section}>
+                            <h3>📋 Exemples</h3>
+                            {problem.test_cases.filter(tc => !tc.hidden).map((tc, idx) => (
+                                <div key={tc.id} className={styles.example}>
+                                    <div className={styles.exampleHeader}>Exemple {idx + 1}</div>
+                                    <div className={styles.exampleContent}>
+                                        <div className={styles.exampleBlock}>
+                                            <span className={styles.exampleLabel}>Entrée:</span>
+                                            <pre>{tc.input}</pre>
+                                        </div>
+                                        <div className={styles.exampleBlock}>
+                                            <span className={styles.exampleLabel}>Sortie:</span>
+                                            <pre>{tc.expected}</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </section>
+                    )}
+
+                    <section className={styles.section}>
+                        <h3>⚠️ Contraintes</h3>
+                        <ul className={styles.constraints}>
+                            <li>Temps limite: {problem.time_limit_ms} ms</li>
+                            <li>Mémoire limite: {problem.memory_limit_mb} MB</li>
+                        </ul>
+                    </section>
                 </div>
             </div>
 
-            {/* Diviseur redimensionnable (Problème) */}
-            <div
-                className={styles.resizer}
-                onMouseDown={handleProblemResize}
-            />
+            {/* Resizer */}
+            <div className={styles.resizerVertical} onMouseDown={handleLeftResize}/>
 
-            {/* Section Centrale (Éditeur + Output) */}
-            <div className={styles.centerPanel}>
-                {/* Éditeur */}
-                <div
-                    className={styles.editorPanel}
-                    style={{ height: `${editorHeight}%` }}
-                >
-                    <div className={styles.panelHeader}>
-                        <div className={styles.editorControls}>
-                            <span>💻 Éditeur de Code</span>
+            {/* Right Panel - Editor + Output */}
+            <div className={styles.rightPanel}>
+                {/* Editor Section */}
+                <div className={styles.editorSection} style={{height: `calc(${100 - bottomPanelHeight}% - 4px)`}}>
+                    {/* Editor Toolbar */}
+                    <div className={styles.editorToolbar}>
+                        <div className={styles.toolbarLeft}>
                             <select
-                                value={language}
-                                onChange={(e) => setLanguage(e.target.value)}
+                                value={monacoLanguage}
+                                onChange={(e) => handleLanguageChange(e.target.value)}
                                 className={styles.languageSelect}
                             >
+                                <option value="python">Python</option>
                                 <option value="javascript">JavaScript</option>
                                 <option value="typescript">TypeScript</option>
-                                <option value="python">Python</option>
                                 <option value="java">Java</option>
                                 <option value="cpp">C++</option>
                                 <option value="csharp">C#</option>
+                                <option value="go">Go</option>
+                                <option value="rust">Rust</option>
+                                <option value="c">C</option>
+                                <option value="swift">Swift</option>
+                            </select>
+
+                            <select
+                                value={theme}
+                                onChange={(e) => setTheme(e.target.value as 'vs-dark' | 'light')}
+                                className={styles.themeSelect}
+                            >
+                                <option value="vs-dark">🌙 Dark</option>
+                                <option value="light">☀️ Light</option>
+                            </select>
+
+                            <select
+                                value={fontSize}
+                                onChange={(e) => setFontSize(parseInt(e.target.value))}
+                                className={styles.fontSizeSelect}
+                            >
+                                <option value="12">12px</option>
+                                <option value="14">14px</option>
+                                <option value="16">16px</option>
+                                <option value="18">18px</option>
+                                <option value="20">20px</option>
                             </select>
                         </div>
-                        <div className={styles.headerButtons}>
-                            <button className={styles.runBtn} onClick={handleSubmit} disabled={loading}>
-                                {loading ? '⏳' : '▶'}
-                            </button>
-                            <button className={styles.clearBtn} onClick={handleClear}>
-                                🗑
+
+                        <div className={styles.toolbarRight}>
+                            <button
+                                onClick={handleReset}
+                                className={styles.resetButton}
+                                title="Réinitialiser le code"
+                            >
+                                🔄 Reset
                             </button>
                             <button
-                                className={styles.maximizeBtn}
-                                onClick={() => toggleMaximize('editor')}
+                                onClick={handleRun}
+                                className={styles.runButton}
+                                disabled={submitting}
                             >
-                                ⛶
+                                {submitting ? '⏳' : '▶️'} Exécuter
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                className={styles.submitButton}
+                                disabled={submitting}
+                            >
+                                {submitting ? '⏳' : '📤'} Soumettre
                             </button>
                         </div>
                     </div>
-                    <div className={styles.editorContent}>
+
+                    {/* Monaco Editor */}
+                    <div className={styles.editorContainer}>
                         <Editor
                             height="100%"
-                            language={language}
+                            language={monacoLanguage}
                             value={code}
-                            onChange={handleEditorChange}
-                            onMount={handleEditorMount}
-                            theme="vs-dark"
+                            theme={theme}
+                            onChange={handleCodeChange}
                             options={{
-                                minimap: { enabled: false },
-                                fontSize: 14,
+                                fontSize: fontSize,
+                                minimap: {enabled: true},
                                 lineNumbers: 'on',
+                                roundedSelection: true,
                                 scrollBeyondLastLine: false,
                                 automaticLayout: true,
+                                tabSize: 4,
+                                insertSpaces: true,
+                                wordWrap: 'on',
+                                folding: true,
+                                renderLineHighlight: 'all',
+                                cursorBlinking: 'smooth',
+                                cursorSmoothCaretAnimation: 'on',
+                                smoothScrolling: true,
+                                padding: {top: 10, bottom: 10}
                             }}
                         />
                     </div>
                 </div>
 
-                {/* Diviseur redimensionnable (Éditeur) */}
-                <div
-                    className={`${styles.resizer} ${styles.horizontal}`}
-                    onMouseDown={handleEditorResize}
-                />
+                {/* Horizontal Resizer */}
+                <div className={styles.resizerHorizontal} onMouseDown={handleBottomResize}/>
 
-                {/* Output */}
-                <div className={styles.outputPanel}>
-                    <div className={styles.panelHeader}>
-                        <h3>📤 Résultat</h3>
+                {/* Output Section */}
+                <div className={styles.outputSection} style={{height: `${bottomPanelHeight}%`}}>
+                    {/* Output Tabs */}
+                    <div className={styles.outputTabs}>
                         <button
-                            className={styles.maximizeBtn}
-                            onClick={() => toggleMaximize('output')}
+                            className={`${styles.outputTab} ${activeTab === 'output' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('output')}
                         >
-                            ⛶
+                            📤 Sortie
+                        </button>
+                        <button
+                            className={`${styles.outputTab} ${activeTab === 'testcases' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('testcases')}
+                        >
+                            🧪 Tests ({problem.test_cases?.filter(tc => !tc.hidden).length || 0})
                         </button>
                     </div>
-                    <div className={styles.panelContent}>
-                        <OutputSection output={output} error={error} />
+
+                    {/* Output Content */}
+                    <div className={styles.outputContent}>
+                        {activeTab === 'output' ? (
+                            <pre className={`${styles.outputText} ${
+                                submissionResult?.verdict === 'Accepted' ? styles.successOutput :
+                                    submissionResult?.verdict ? styles.errorOutput : ''
+                            }`}>
+                                {output || '🚀 Exécutez votre code pour voir le résultat ici'}
+                            </pre>
+                        ) : (
+                            <div className={styles.testCasesList}>
+                                {problem.test_cases?.filter(tc => !tc.hidden).map((tc, idx) => (
+                                    <div key={tc.id} className={styles.testCaseItem}>
+                                        <div className={styles.testCaseHeader}>
+                                            <span>Test {idx + 1}</span>
+                                            {submissionResult?.test_case_results && submissionResult.test_case_results[idx] && (
+                                                <span className={
+                                                    submissionResult.test_case_results[idx].passed
+                                                        ? styles.testPassed
+                                                        : styles.testFailed
+                                                }>
+                                                    {submissionResult.test_case_results[idx].passed ? '✅' : '❌'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className={styles.testCaseBody}>
+                                            <div>
+                                                <strong>Entrée:</strong>
+                                                <pre>{tc.input}</pre>
+                                            </div>
+                                            <div>
+                                                <strong>Sortie attendue:</strong>
+                                                <pre>{tc.expected}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
-            </div>
-
-            {/* Diviseur redimensionnable (Chat) */}
-            <div
-                className={styles.resizer}
-                onMouseDown={handleChatResize}
-            />
-
-            {/* Section Chat (Droite) */}
-            <div
-                className={styles.chatPanel}
-                style={{ width: `${chatWidth}%` }}
-            >
-                <div className={styles.panelHeader}>
-                    <h3>💬 Assistant IA</h3>
-                    <button
-                        className={styles.maximizeBtn}
-                        onClick={() => toggleMaximize('chat')}
-                    >
-                        ⛶
-                    </button>
-                </div>
-                <div className={styles.panelContent}>
-                    <ChatSection
-                        messages={messages}
-                        chatInput={chatInput}
-                        setChatInput={setChatInput}
-                        handleKeyPress={handleKeyPress}
-                        handleSendMessage={handleSendMessage}
-                        chatLoading={chatLoading}
-                        chatEndRef={chatEndRef}
-                    />
                 </div>
             </div>
         </div>
     );
 }
 
-// Composant Section Problème
-function ProblemSection({ problem, getDifficultyColor }: { problem: Problem, getDifficultyColor: (d: string) => string }) {
-    return (
-        <div className={styles.problemContent}>
-            <div className={styles.problemTitle}>
-                <h2>{problem.id}. {problem.title}</h2>
-                <span
-                    className={styles.difficulty}
-                    style={{ backgroundColor: getDifficultyColor(problem.difficulty) }}
-                >
-                    {problem.difficulty}
-                </span>
-            </div>
-
-            <div className={styles.section}>
-                <h3>Description</h3>
-                <p>{problem.description}</p>
-            </div>
-
-            <div className={styles.section}>
-                <h3>Exemples</h3>
-                {problem.examples.map((example, idx) => (
-                    <div key={idx} className={styles.example}>
-                        <p><strong>Exemple {idx + 1}:</strong></p>
-                        <div className={styles.codeBlock}>
-                            <div><strong>Input:</strong> {example.input}</div>
-                            <div><strong>Output:</strong> {example.output}</div>
-                            {example.explanation && (
-                                <div><strong>Explication:</strong> {example.explanation}</div>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <div className={styles.section}>
-                <h3>Contraintes</h3>
-                <ul>
-                    {problem.constraints.map((constraint, idx) => (
-                        <li key={idx}>{constraint}</li>
-                    ))}
-                </ul>
-            </div>
-        </div>
-    );
-}
-
-// Composant Chat
-function ChatSection({ messages, chatInput, setChatInput, handleKeyPress, handleSendMessage, chatLoading, chatEndRef }: any) {
-    return (
-        <div className={styles.chatContent}>
-            <div className={styles.messagesContainer}>
-                {messages.map((msg: ChatMessage, idx: number) => (
-                    <div
-                        key={idx}
-                        className={`${styles.message} ${msg.role === 'user' ? styles.userMessage : styles.assistantMessage}`}
-                    >
-                        <div className={styles.messageHeader}>
-                            <span className={styles.messageRole}>
-                                {msg.role === 'user' ? '👤 Vous' : '🤖 Assistant'}
-                            </span>
-                            <span className={styles.messageTime}>
-                                {msg.timestamp.toLocaleTimeString()}
-                            </span>
-                        </div>
-                        <div className={styles.messageContent}>{msg.content}</div>
-                    </div>
-                ))}
-                {chatLoading && (
-                    <div className={`${styles.message} ${styles.assistantMessage}`}>
-                        <div className={styles.messageContent}>
-                            <span className={styles.typing}>En train d'écrire...</span>
-                        </div>
-                    </div>
-                )}
-                <div ref={chatEndRef} />
-            </div>
-            <div className={styles.chatInput}>
-                <textarea
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Posez votre question..."
-                    rows={3}
-                />
-                <button onClick={handleSendMessage} disabled={chatLoading || !chatInput.trim()}>
-                    Envoyer
-                </button>
-            </div>
-        </div>
-    );
-}
-
-// Composant Output
-function OutputSection({ output, error }: { output: string, error: boolean }) {
-    return (
-        <div className={styles.outputContent}>
-            {output ? (
-                <pre className={error ? styles.errorOutput : styles.successOutput}>
-                    {output}
-                </pre>
-            ) : (
-                <div className={styles.emptyOutput}>
-                    <p>🚀 Exécutez votre code pour voir le résultat ici</p>
-                </div>
-            )}
-        </div>
-    );
-}
+export default CodingPage

@@ -5,26 +5,31 @@ import LoginPage from './pages/Auth/LoginPage'
 import RegisterPage from './pages/Auth/RegisterPage'
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage'
 import Header from './components/header/Header'
+import { AuthProvider } from './context/AuthContext';
+
 
 function App() {
     return (
-        <BrowserRouter>
-            <Header />
-            <Routes>
-                {/* Page d'accueil */}
-                <Route path="/" element={<HomePage />} />
+        <AuthProvider>
+            <BrowserRouter>
+                <Header/>
+                <Routes>
+                    {/* Page d'accueil */}
+                    <Route path="/" element={<HomePage />} />
 
-                {/* Routes d'authentification */}
-                <Route path="/auth/login" element={<LoginPage />} />
-                <Route path="/auth/register" element={<RegisterPage />} />
-                <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+                    {/* Routes d'authentification */}
+                    <Route path="/auth/login" element={<LoginPage />} />
+                    <Route path="/auth/register" element={<RegisterPage />} />
+                    <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
 
-                {/* Route de codage */}
-                <Route path="/code" element={<CodingPage />} />
+                    {/* Route de codage */}
+                    <Route path="/code" element={<CodingPage />} />
 
-                {/* Ajouter vos autres routes ici au fur et à mesure */}
-            </Routes>
-        </BrowserRouter>
+                    {/* Ajouter vos autres routes ici au fur et à mesure */}
+                </Routes>
+            </BrowserRouter>
+        </AuthProvider>
+
     )
 }
 
