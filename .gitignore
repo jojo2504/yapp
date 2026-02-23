@@ -1,5 +1,5 @@
 target/
 backend/tmp
-.env
+backend/.env
 .vscode
 .idea

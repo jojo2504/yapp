@@ -16,7 +16,7 @@ type User struct {
 	OAuthID       *string `json:"oauth_id,omitempty" gorm:"size:255;index:idx_oauth,unique"`
 
 	// Metadata
-	AvatarURL     *string `json:"avatar_url,omitempty" gorm:"size:500"`
+	AvatarURL     *string `json:"avatar_url,omitempty" gorm:"type:text"`
 	EmailVerified bool    `json:"email_verified" gorm:"default:false"`
 	IsActive      bool    `json:"is_active" gorm:"default:true"`
 

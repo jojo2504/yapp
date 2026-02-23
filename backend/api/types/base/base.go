@@ -2,7 +2,6 @@ package base
 
 import (
 	"time"
-
 	"gorm.io/gorm"
 )
 

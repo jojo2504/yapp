@@ -26,15 +26,11 @@ func AllModels() []interface{} {
 	}
 }
 
-// RunMigrations exécute toutes les migrations
-func RunMigrations(db *gorm.DB) error {
-	log.Println("🔄 Running database migrations...")
-
-	if err := db.AutoMigrate(AllModels()...); err != nil {
-		return err
-	}
-
-	log.Println("✅ Migrations completed successfully")
+// RunMigrations is intentionally disabled.
+// Schema is managed by manual SQL migrations in migrations/001_init.sql.
+// Run those files directly against the database (e.g. via docker-compose or psql).
+func RunMigrations(_ *gorm.DB) error {
+	log.Println("ℹ️  AutoMigrate disabled — schema managed by SQL migration files")
 	return nil
 }
 

@@ -94,6 +94,7 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 
 	// Create user with existing type
 	orgID := req.OrganisationID
+	hashedStr := string(hashedPassword)
 	newUser := user.User{
 		BaseModel: base.BaseModel{
 			CreatedAt: time.Now(),
@@ -101,8 +102,8 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 		},
 		Name:           req.Name,
 		Email:          req.Email,
-		PasswordHash:   string(hashedPassword),
-		Role:           user.Student,
+		PasswordHash:   &hashedStr,
+		Role:           user.RoleStudent,
 		OrganisationID: &orgID,
 		IsActive:       true,
 		EmailVerified:  false,
@@ -127,7 +128,7 @@ func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 		return nil, errors.New("account is deactivated")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(*u.PasswordHash), []byte(req.Password)); err != nil {
 		return nil, errors.New("invalid email or password")
 	}
 

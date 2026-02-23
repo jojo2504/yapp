@@ -1,9 +1,9 @@
 package database
 
 import (
-	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -13,16 +13,18 @@ import (
 var DB *gorm.DB
 
 func Connect() *gorm.DB {
-	host := getEnv("POSTGRES_HOST", "postgres")
-	port := getEnv("POSTGRES_PORT", "5432")
-	user := getEnv("POSTGRES_USER", "user")
-	password := getEnv("POSTGRES_PASSWORD", "password")
-	dbname := getEnv("POSTGRES_DB", "yapp")
+	dsn := os.Getenv("SUPABASE_DB_URL")
+	if dsn == "" {
+		log.Fatal("SUPABASE_DB_URL environment variable is not set")
+	}
 
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname,
-	)
+	if !strings.Contains(dsn, "sslmode=") {
+		if strings.Contains(dsn, "?") {
+			dsn += "&sslmode=require"
+		} else {
+			dsn += "?sslmode=require"
+		}
+	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
@@ -35,11 +37,4 @@ func Connect() *gorm.DB {
 	log.Println("Database connected successfully")
 
 	return db
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

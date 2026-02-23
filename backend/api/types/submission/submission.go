@@ -24,6 +24,9 @@ type Submission struct {
 	// Output brut du juge
 	JudgeOutput *string `json:"judge_output,omitempty" gorm:"type:text"`
 
+	// Set to true when the submission was made during a timed exam.
+	IsExamSubmission bool `json:"is_exam_submission" gorm:"default:false"`
+
 	// Relations
 	TestResults []TestCaseResult `json:"test_results,omitempty" gorm:"foreignKey:SubmissionID"`
 }
