@@ -1,0 +1,444 @@
+/* ── Page ────────────────────────────────────────────────────────── */
+.page {
+  padding: 2.75rem 2.5rem 4rem;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 2.25rem;
+  border-bottom: 1px solid #1c1c28;
+}
+
+.headerLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7c3aed;
+  margin-bottom: 0.3rem;
+}
+
+.headerTitle {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.headerSub {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 0.35rem;
+}
+
+.btnCreate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.btnCreate:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+}
+
+/* ── List ────────────────────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.empty {
+  padding: 3rem;
+  text-align: center;
+  background: #111118;
+  border: 1px dashed #1c1c28;
+  border-radius: 14px;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+/* ── Exam card ───────────────────────────────────────────────────── */
+.card {
+  background: #111118;
+  border: 1px solid #1c1c28;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: #2a2a38;
+}
+
+.cardBody {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding: 1.5rem 1.625rem;
+}
+
+.cardLeft {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: -0.01em;
+}
+
+/* ── Status badge ────────────────────────────────────────────────── */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.statusUpcoming  { background: rgba(14, 165, 233, 0.12); color: #38bdf8; }
+.statusActive    { background: rgba(16, 185, 129, 0.12); color: #34d399; }
+.statusCompleted { background: rgba(100, 116, 139, 0.12); color: #64748b; }
+
+.activeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── Card meta ───────────────────────────────────────────────────── */
+.cardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.cardStats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.statPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  background: #1a1a24;
+  border: 1px solid #1c1c28;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* ── Card actions ────────────────────────────────────────────────── */
+.cardActions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.btnViolations {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #1c1c28;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btnViolations:hover,
+.btnViolationsOpen {
+  border-color: rgba(124, 58, 237, 0.4);
+  color: #a78bfa;
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.violationCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  font-size: 0.675rem;
+  font-weight: 700;
+}
+
+.btnEdit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #1c1c28;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btnEdit:hover {
+  border-color: rgba(124, 58, 237, 0.4);
+  color: #a78bfa;
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.btnDelete {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #1c1c28;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btnDelete:hover {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* ── Inline delete confirm ───────────────────────────────────────── */
+.confirmDelete {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.confirmText {
+  font-size: 0.8125rem;
+  color: #f87171;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btnConfirm {
+  padding: 0.4rem 0.8rem;
+  border-radius: 7px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.btnConfirm:hover { background: rgba(239, 68, 68, 0.18); }
+
+.btnCancelDel {
+  padding: 0.4rem 0.8rem;
+  border-radius: 7px;
+  border: 1px solid #1c1c28;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s;
+}
+
+.btnCancelDel:hover { color: #94a3b8; background: rgba(255,255,255,0.04); }
+
+/* ── Violations accordion ────────────────────────────────────────── */
+.violationsSection {
+  border-top: 1px solid #1c1c28;
+  padding: 1.25rem 1.625rem 1.5rem;
+  background: #0d0d12;
+}
+
+.violationsSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.violationsSectionTitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.violationsSectionCount {
+  font-size: 0.75rem;
+  color: #334155;
+}
+
+.noViolations {
+  font-size: 0.85rem;
+  color: #334155;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+/* ── Violations table ────────────────────────────────────────────── */
+.tableWrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #1c1c28;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8375rem;
+}
+
+.table thead tr {
+  background: #111118;
+  border-bottom: 1px solid #1c1c28;
+}
+
+.table th {
+  padding: 0.65rem 1rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid #1a1a24;
+  transition: background 0.15s;
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  color: #94a3b8;
+  vertical-align: middle;
+}
+
+.tdName {
+  color: #cbd5e1 !important;
+  font-weight: 500;
+}
+
+.tdMono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.775rem !important;
+  color: #64748b !important;
+}
+
+/* ── Violation type badges ───────────────────────────────────────── */
+.violationTypeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vtBlue   { background: rgba(14, 165, 233, 0.1);  color: #38bdf8; }
+.vtAmber  { background: rgba(245, 158, 11, 0.1);  color: #fbbf24; }
+.vtOrange { background: rgba(249, 115, 22, 0.1);  color: #fb923c; }
+.vtRed    { background: rgba(239, 68, 68, 0.1);   color: #f87171; }
+.vtPurple { background: rgba(124, 58, 237, 0.1);  color: #a78bfa; }
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page { padding: 1.75rem 1.25rem 3rem; }
+  .header { flex-direction: column; }
+  .cardBody { flex-direction: column; }
+  .cardActions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+}

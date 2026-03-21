@@ -1,0 +1,261 @@
+/* ── Bar ─────────────────────────────────────────────────────────── */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2.5rem;
+  background: rgba(11, 11, 15, 0.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Logo ────────────────────────────────────────────────────────── */
+.logo {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  letter-spacing: -0.02em;
+  color: #f1f5f9;
+  text-decoration: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.logo span {
+  color: #7c3aed;
+}
+
+/* ── Center nav links ────────────────────────────────────────────── */
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  list-style: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.18s, background 0.18s;
+}
+
+.link:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.linkActive {
+  color: #e2e8f0;
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.linkActive:hover {
+  background: rgba(124, 58, 237, 0.18);
+}
+
+/* ── Right actions ───────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+.btnLogin {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1.1rem;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btnLogin:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.btnLogout {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1.1rem;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btnLogout:hover {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.btnSignUp {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1.1rem;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+
+.btnSignUp:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35);
+}
+
+/* ── Hamburger (mobile) ──────────────────────────────────────────── */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  border-radius: 7px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.hamburger:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: #94a3b8;
+  border-radius: 2px;
+  transition: transform 0.25s, opacity 0.25s;
+  transform-origin: center;
+}
+
+.barOpen:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.barOpen:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.barOpen:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ── Mobile drawer ───────────────────────────────────────────────── */
+.drawer {
+  display: none;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  z-index: 199;
+  background: rgba(11, 11, 15, 0.97);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1rem 1.5rem 1.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.drawerOpen {
+  display: flex;
+}
+
+.drawerLink {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.18s, background 0.18s;
+}
+
+.drawerLink:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.drawerLinkActive {
+  color: #e2e8f0;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.drawerDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0.75rem 0;
+}
+
+.drawerActions {
+  display: flex;
+  gap: 0.625rem;
+  padding: 0 0.25rem;
+}
+
+.drawerActions .btnLogin,
+.drawerActions .btnSignUp {
+  flex: 1;
+  justify-content: center;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .navLinks {
+    display: none;
+  }
+
+  .actions {
+    display: none;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .navbar {
+    padding: 0 1.25rem;
+  }
+}
