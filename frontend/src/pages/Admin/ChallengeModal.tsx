@@ -65,7 +65,6 @@ export default function ChallengeModal({ initial, onClose, onSave }: Props) {
       : EMPTY_FORM
   );
   const [activeLang, setActiveLang] = useState<Language>('javascript');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleEsc = useCallback((e: KeyboardEvent) => {
@@ -94,7 +93,7 @@ export default function ChallengeModal({ initial, onClose, onSave }: Props) {
   function addTestCase() {
     setForm(prev => ({
       ...prev,
-      testCases: [...prev.testCases, { id: generateId(), input: '', output: '' }],
+      testCases: [...prev.testCases, { id: generateId(), input: '', output: '', hidden: false }],
     }));
   }
 
@@ -105,35 +104,24 @@ export default function ChallengeModal({ initial, onClose, onSave }: Props) {
     }));
   }
 
+  function toggleHidden(id: string) {
+    setForm(prev => ({
+      ...prev,
+      testCases: prev.testCases.map(tc => tc.id === id ? { ...tc, hidden: !tc.hidden } : tc),
+    }));
+  }
+
   function removeTestCase(id: string) {
     setForm(prev => ({ ...prev, testCases: prev.testCases.filter(tc => tc.id !== id) }));
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────────
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) { setError('Title is required.'); return; }
     setError('');
-    setLoading(true);
-    try {
-      const url    = initial ? `/api/challenges/${initial.id}` : '/api/challenges';
-      const method = initial ? 'PUT' : 'POST';
-      const res    = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(initial ? { ...form, id: initial.id } : form),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Failed to save challenge.');
-      }
-    } catch {
-      // No real API yet — fall through to optimistic local update.
-    } finally {
-      setLoading(false);
-      onSave(form);
-    }
+    onSave(form);
   }
 
   const isEditing = Boolean(initial);
@@ -284,7 +272,27 @@ export default function ChallengeModal({ initial, onClose, onSave }: Props) {
             <div className={styles.testList}>
               {form.testCases.map((tc, i) => (
                 <div key={tc.id} className={styles.testCase}>
-                  <span className={styles.testNum}>#{i + 1}</span>
+                  <div className={styles.testCaseTop}>
+                    <div className={styles.testCaseLeft}>
+                      <span className={styles.testNum}>#{i + 1}</span>
+                      <button
+                        type="button"
+                        className={`${styles.btnHidden} ${tc.hidden ? styles.btnHiddenActive : ''}`}
+                        onClick={() => toggleHidden(tc.id)}
+                        title={tc.hidden ? 'Hidden from students' : 'Visible to students'}
+                      >
+                        {tc.hidden ? 'Hidden' : 'Visible'}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.btnRemoveCase}
+                      onClick={() => removeTestCase(tc.id)}
+                      aria-label="Remove test case"
+                    >
+                      <IconX />
+                    </button>
+                  </div>
                   <div className={styles.testFields}>
                     <div className={styles.testField}>
                       <span className={styles.testLabel}>Input</span>
@@ -307,14 +315,6 @@ export default function ChallengeModal({ initial, onClose, onSave }: Props) {
                       />
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className={styles.btnRemoveCase}
-                    onClick={() => removeTestCase(tc.id)}
-                    aria-label="Remove test case"
-                  >
-                    <IconX />
-                  </button>
                 </div>
               ))}
             </div>
@@ -330,9 +330,8 @@ export default function ChallengeModal({ initial, onClose, onSave }: Props) {
             type="submit"
             form="challenge-form"
             className={styles.btnSave}
-            disabled={loading}
           >
-            {loading ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Challenge'}
+            {isEditing ? 'Save Changes' : 'Create Challenge'}
           </button>
         </div>
 

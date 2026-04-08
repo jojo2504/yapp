@@ -4,9 +4,10 @@ import styles from './Navbar.module.css';
 import { LS } from '../../constants/storage';
 
 const NAV_LINKS = [
-  { to: '/challenges', label: 'Challenges' },
-  { to: '/courses',    label: 'Courses'    },
-  { to: '/exam',       label: 'Exams'      },
+  { to: '/challenges',  label: 'Challenges'  },
+  { to: '/courses',     label: 'Courses'     },
+  { to: '/exam',        label: 'Exams'       },
+  { to: '/playground',  label: 'Playground'  },
 ];
 
 export default function Navbar() {
@@ -16,7 +17,10 @@ export default function Navbar() {
   // Read directly from localStorage so every re-render (triggered by route
   // changes via NavLink's location subscription) reflects the current auth state.
   const isLoggedIn = Boolean(localStorage.getItem(LS.TOKEN));
-  const logoTo = isLoggedIn ? '/dashboard' : '/';
+  const storedUser = localStorage.getItem(LS.USER);
+  const userRole: string = storedUser ? (JSON.parse(storedUser).role ?? '') : '';
+  const dashboardTo = userRole === 'Admin' ? '/admin/dashboard' : '/dashboard';
+  const logoTo = isLoggedIn ? dashboardTo : '/';
 
   function handleLogout() {
     localStorage.removeItem(LS.TOKEN);
@@ -56,7 +60,7 @@ export default function Navbar() {
         <div className={styles.actions}>
           {isLoggedIn ? (
             <>
-              <Link to="/dashboard" className={styles.btnLogin}>
+              <Link to={dashboardTo} className={styles.btnLogin}>
                 Dashboard
               </Link>
               <button className={styles.btnLogout} onClick={handleLogout}>
@@ -104,7 +108,7 @@ export default function Navbar() {
         <div className={styles.drawerActions}>
           {isLoggedIn ? (
             <>
-              <Link to="/dashboard" className={styles.btnLogin} onClick={() => setOpen(false)}>
+              <Link to={dashboardTo} className={styles.btnLogin} onClick={() => setOpen(false)}>
                 Dashboard
               </Link>
               <button className={styles.btnLogout} onClick={handleLogout}>

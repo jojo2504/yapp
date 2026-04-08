@@ -83,6 +83,7 @@ const SIDEBAR_LINKS = [
   { to: '/admin/courses',     label: 'Manage Courses',     icon: <IconBook /> },
   { to: '/admin/exams',       label: 'Manage Exams',       icon: <IconClip /> },
   { to: '/admin/groups',      label: 'Groups',             icon: <IconUsers /> },
+  { to: '/admin/users',       label: 'Manage Users',       icon: <IconUsers /> },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────

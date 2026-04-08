@@ -21,7 +21,7 @@ export default function ProtectedRoute() {
  * own home page instead of showing a blank screen or an error.
  */
 export function RoleGuard({ role }: { role: 'admin' | 'teacher' }) {
-  const userRole = getRole();
+  const userRole = getRole().toLowerCase();
   if (userRole === role) return <Outlet />;
   if (userRole === 'admin')   return <Navigate to="/admin/dashboard"   replace />;
   if (userRole === 'teacher') return <Navigate to="/teacher/dashboard" replace />;

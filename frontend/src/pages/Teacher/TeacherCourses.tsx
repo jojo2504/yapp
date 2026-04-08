@@ -1,56 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from '../Admin/ManageCourses.module.css';
 import CourseModal from '../Admin/CourseModal';
 import AssignGroupModal from '../Admin/AssignGroupModal';
 import type { Course, MockGroup } from '../Admin/ManageCourses';
-import type { Group } from '../Admin/ManageGroups';
-import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── API mapping ───────────────────────────────────────────────────────────────
 
-type TeacherCourse = Course & { teacherId: string };
-type StoredGroup   = Group & { teacherId: string };
-
-// ── localStorage helpers ──────────────────────────────────────────────────────
-
-const LS_COURSES = LS.T_COURSES;
-const LS_GROUPS  = LS.T_GROUPS;
-
-function getTeacherId(): string {
-  try {
-    const raw = localStorage.getItem(LS.USER);
-    if (raw) return (JSON.parse(raw) as { teacherId?: string }).teacherId ?? '';
-  } catch { /* ignore */ }
-  return '';
+interface ApiCourse {
+  id: number;
+  name: string;
+  description: string;
+  challenge_ids: number[];
+  group_ids: number[];
 }
 
-function loadCourses(): TeacherCourse[] {
-  try {
-    const raw = localStorage.getItem(LS_COURSES);
-    if (raw) return JSON.parse(raw) as TeacherCourse[];
-  } catch { /* ignore */ }
-  return [];
+interface ApiGroup {
+  id: number;
+  name: string;
 }
 
-function loadMyGroups(teacherId: string): MockGroup[] {
-  try {
-    const raw = localStorage.getItem(LS_GROUPS);
-    if (raw) {
-      const all = JSON.parse(raw) as StoredGroup[];
-      return all
-        .filter(g => g.teacherId === teacherId)
-        .map(g => ({ id: g.id, name: g.name }));
-    }
-  } catch { /* ignore */ }
-  return [];
+function courseFromApi(raw: ApiCourse): Course {
+  return {
+    id: String(raw.id),
+    name: raw.name ?? '',
+    description: raw.description ?? '',
+    thumbnail: '',
+    challengeIds: (raw.challenge_ids ?? []).map(String),
+    groupIds: (raw.group_ids ?? []).map(String),
+  };
 }
 
-function persistCourses(items: TeacherCourse[]): void {
-  localStorage.setItem(LS_COURSES, JSON.stringify(items));
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+function courseToApi(c: Omit<Course, 'id' | 'groupIds'>): object {
+  return {
+    name: c.name,
+    description: c.description,
+    challenge_ids: c.challengeIds.map(Number),
+  };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -115,46 +101,95 @@ function IconUserPlus() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TeacherCourses() {
-  const teacherId  = getTeacherId();
-  const [all, setAll]     = useState<TeacherCourse[]>(loadCourses);
-  const mine               = all.filter(c => c.teacherId === teacherId);
-
-  const [modalOpen, setModalOpen]           = useState(false);
-  const [editing, setEditing]               = useState<Course | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [groups, setGroups]   = useState<MockGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing]     = useState<Course | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [assignTarget, setAssignTarget]       = useState<TeacherCourse | null>(null);
+  const [assignTarget, setAssignTarget] = useState<Course | null>(null);
 
-  function update(updated: TeacherCourse[]) {
-    setAll(updated);
-    persistCourses(updated);
+  const groupNameMap: Record<string, string> = Object.fromEntries(groups.map(g => [g.id, g.name]));
+
+  function loadAll() {
+    setLoading(true);
+    Promise.all([
+      apiFetch<ApiCourse[]>('/api/courses'),
+      apiFetch<ApiGroup[]>('/api/groups').catch(() => [] as ApiGroup[]),
+    ])
+      .then(([coursesData, groupsData]) => {
+        setCourses(coursesData.map(courseFromApi));
+        setGroups(groupsData.map(g => ({ id: String(g.id), name: g.name ?? '' })));
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   function openCreate() { setEditing(null); setModalOpen(true); }
-  function openEdit(c: TeacherCourse) { setEditing(c); setModalOpen(true); }
+  function openEdit(c: Course) { setEditing(c); setModalOpen(true); }
 
-  function handleSave(data: Omit<Course, 'id' | 'groupIds'>) {
-    if (editing) {
-      update(all.map(c =>
-        c.id === editing.id ? { ...data, id: c.id, groupIds: c.groupIds, teacherId: c.teacherId } : c
-      ));
-    } else {
-      update([...all, { ...data, id: generateId(), groupIds: [], teacherId }]);
-    }
+  async function handleSave(data: Omit<Course, 'id' | 'groupIds'>) {
+    const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);
+    setError('');
+    try {
+      if (currentEditing) {
+        const updated = await apiFetch<ApiCourse>(`/api/courses/${currentEditing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(courseToApi(data)),
+        });
+        setCourses(prev => prev.map(c => c.id === currentEditing.id ? courseFromApi(updated) : c));
+      } else {
+        const created = await apiFetch<ApiCourse>('/api/courses', {
+          method: 'POST',
+          body: JSON.stringify(courseToApi(data)),
+        });
+        setCourses(prev => [...prev, courseFromApi(created)]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save course.');
+      loadAll();
+    }
   }
 
-  function handleDelete(id: string) {
-    update(all.filter(c => c.id !== id));
+  async function handleDelete(id: string) {
     setConfirmDeleteId(null);
+    try {
+      await apiFetch(`/api/courses/${id}`, { method: 'DELETE' });
+      setCourses(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete course.');
+    }
   }
 
-  function handleAssign(courseId: string, groupIds: string[]) {
-    update(all.map(c => c.id === courseId ? { ...c, groupIds } : c));
+  async function handleAssign(courseId: string, groupIds: string[]) {
     setAssignTarget(null);
+    try {
+      const updated = await apiFetch<ApiCourse>(`/api/courses/${courseId}/assign`, {
+        method: 'POST',
+        body: JSON.stringify({ group_ids: groupIds.map(Number) }),
+      });
+      setCourses(prev => prev.map(c => c.id === courseId ? courseFromApi(updated) : c));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to assign groups.');
+    }
   }
 
-  const myGroups = loadMyGroups(teacherId);
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <p className={styles.headerLabel}>Teacher</p>
+          <h1 className={styles.headerTitle}>My Courses</h1>
+        </div>
+      </div>
+      <div className={styles.list} style={{ padding: '2rem', color: 'var(--text-muted, #888)' }}>Loading…</div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -164,20 +199,22 @@ export default function TeacherCourses() {
         <div>
           <p className={styles.headerLabel}>Teacher</p>
           <h1 className={styles.headerTitle}>My Courses</h1>
-          <p className={styles.headerSub}>{mine.length} course{mine.length !== 1 ? 's' : ''}</p>
+          <p className={styles.headerSub}>{courses.length} course{courses.length !== 1 ? 's' : ''}</p>
         </div>
         <button className={styles.btnCreate} onClick={openCreate}>
           <IconPlus /> Create Course
         </button>
       </div>
 
+      {error && <p style={{ color: 'var(--error, #f87171)', padding: '0 0 1rem' }}>{error}</p>}
+
       {/* ── Course list ── */}
       <div className={styles.list}>
-        {mine.length === 0 && (
+        {courses.length === 0 && (
           <div className={styles.empty}>No courses yet. Create your first one.</div>
         )}
 
-        {mine.map(course => (
+        {courses.map(course => (
           <div key={course.id} className={styles.card}>
 
             {/* Thumbnail */}
@@ -185,7 +222,7 @@ export default function TeacherCourses() {
               {course.thumbnail ? (
                 <img
                   src={course.thumbnail}
-                  alt={course.title}
+                  alt={course.name}
                   className={styles.thumbnailImg}
                   onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
@@ -199,8 +236,9 @@ export default function TeacherCourses() {
             {/* Content */}
             <div className={styles.cardContent}>
               <div className={styles.cardTop}>
-                <h3 className={styles.cardTitle}>{course.title}</h3>
+                <h3 className={styles.cardTitle}>{course.name}</h3>
               </div>
+
               <p className={styles.cardDesc}>{course.description}</p>
 
               <div className={styles.cardStats}>
@@ -214,15 +252,12 @@ export default function TeacherCourses() {
 
               {course.groupIds.length > 0 && (
                 <div className={styles.groupPreview}>
-                  {course.groupIds.slice(0, 4).map(gid => {
-                    const g = myGroups.find(x => x.id === gid);
-                    return (
-                      <span key={gid} className={styles.groupBadge}>
-                        <IconUsers />
-                        {g ? g.name : `Group ${gid}`}
-                      </span>
-                    );
-                  })}
+                  {course.groupIds.slice(0, 4).map(gid => (
+                    <span key={gid} className={styles.groupBadge}>
+                      <IconUsers />
+                      {groupNameMap[gid] ?? `Group ${gid}`}
+                    </span>
+                  ))}
                   {course.groupIds.length > 4 && (
                     <span className={styles.groupBadgeMore}>
                       +{course.groupIds.length - 4} more
@@ -271,7 +306,7 @@ export default function TeacherCourses() {
       {assignTarget && (
         <AssignGroupModal
           course={assignTarget}
-          groups={myGroups}
+          groups={groups}
           onClose={() => setAssignTarget(null)}
           onConfirm={(groupIds) => handleAssign(assignTarget.id, groupIds)}
         />

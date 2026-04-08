@@ -214,7 +214,7 @@ func (s *Service) Create(req CreateProblemRequest, authorID int64) (*problem.Pro
 		Difficulty:  req.Difficulty,
 		TimeLimit:   timeLimitMs,
 		MemoryLimit: memoryLimitMb,
-		AuthorID:    authorID,
+		AuthorID:    &authorID,
 		Points:      &points,
 	}
 
@@ -227,7 +227,7 @@ func (s *Service) Create(req CreateProblemRequest, authorID int64) (*problem.Pro
 		// Create test cases
 		for _, tcReq := range req.TestCases {
 			tc := problem.TestCase{
-				ProblemID: uint64(p.ID),
+				ProblemID: p.ID,
 				Input:     tcReq.Input,
 				Expected:  tcReq.Expected,
 				Hidden:    tcReq.Hidden,
@@ -256,7 +256,7 @@ func (s *Service) Update(id int64, req UpdateProblemRequest, userID int64, userR
 	}
 
 	// Check permissions
-	if p.AuthorID != userID && userRole != "Admin" {
+	if (p.AuthorID == nil || *p.AuthorID != userID) && userRole != "Admin" {
 		return nil, errors.New("not authorized to update this problem")
 	}
 
@@ -274,10 +274,10 @@ func (s *Service) Update(id int64, req UpdateProblemRequest, userID int64, userR
 		updates["difficulty"] = *req.Difficulty
 	}
 	if req.TimeLimitMs != nil {
-		updates["time_limit_ms"] = *req.TimeLimitMs
+		updates["time_limit"] = *req.TimeLimitMs
 	}
 	if req.MemoryLimitMb != nil {
-		updates["memory_limit_mb"] = *req.MemoryLimitMb
+		updates["memory_limit"] = *req.MemoryLimitMb
 	}
 	if req.Points != nil {
 		updates["points"] = *req.Points
@@ -303,7 +303,7 @@ func (s *Service) Delete(id int64, userID int64, userRole string) error {
 		return errors.New("problem not found")
 	}
 
-	if p.AuthorID != userID && userRole != "Admin" {
+	if (p.AuthorID == nil || *p.AuthorID != userID) && userRole != "Admin" {
 		return errors.New("not authorized to delete this problem")
 	}
 

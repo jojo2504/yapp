@@ -25,12 +25,14 @@ import ManageChallenges from './pages/Admin/ManageChallenges';
 import ManageCourses from './pages/Admin/ManageCourses';
 import ManageExams from './pages/Admin/ManageExams';
 import ManageGroups from './pages/Admin/ManageGroups';
+import ManageUsers from './pages/Admin/ManageUsers';
 
 import TeacherDashboard from './pages/Teacher/TeacherDashboard';
 import TeacherChallenges from './pages/Teacher/TeacherChallenges';
 import TeacherCourses from './pages/Teacher/TeacherCourses';
 import TeacherExams from './pages/Teacher/TeacherExams';
 import TeacherGroups from './pages/Teacher/TeacherGroups';
+import Playground from './pages/Playground/Playground';
 
 export default function App() {
   return (
@@ -56,6 +58,7 @@ export default function App() {
 
           <Route path="/exam/:examId" element={<ExamPage />} />
           <Route path="/exam"         element={<ExamPage />} />
+          <Route path="/playground"   element={<Playground />} />
           <Route path="/profile" element={<ProfilePage />} />
 
           <Route element={<RoleGuard role="admin" />}>
@@ -65,6 +68,7 @@ export default function App() {
               <Route path="/admin/courses" element={<ManageCourses />} />
               <Route path="/admin/exams" element={<ManageExams />} />
               <Route path="/admin/groups" element={<ManageGroups />} />
+              <Route path="/admin/users" element={<ManageUsers />} />
             </Route>
           </Route>
 

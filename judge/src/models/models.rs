@@ -95,7 +95,7 @@ impl Language {
         match self {
             Language::Python => "python main.py",
             Language::Javascript => "node main.js",
-            Language::Typescript => "node main.ts", // TS compiles to JS but is not executed as binary
+            Language::Typescript => "ts-node main.ts",
             _ => "./main"
         }.to_string()
     }
@@ -133,7 +133,11 @@ pub struct Submission {
     pub execution_time: Option<u32>,
     pub memory_usage: Option<u32>,
     pub judge_output: Option<String>,
+    pub stdin: Option<String>,
     pub test_results: Option<Vec<TestCaseResult>>,
+    /// Non-nil for challenge submissions; test cases are embedded inline.
+    pub challenge_id: Option<u64>,
+    pub inline_test_cases: Option<Vec<InlineTestCase>>,
 }
 
 impl Submission {
@@ -155,19 +159,29 @@ impl Submission {
             execution_time: None,
             memory_usage: None,
             judge_output: None,
+            stdin: None,
             test_results: None,
+            challenge_id: None,
+            inline_test_cases: None,
         }
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestCase {
-    pub problem_id: u64,
-	pub input: String, // the json version of the input 
-	pub expected: String, // the json version of the output
-	pub hidden: bool
+    pub id: i64,
+    pub problem_id: i64,
+    pub input: String,
+    pub expected: String,
+    pub hidden: bool,
+    pub position: i32,
 }
 
-pub struct Job {
-    pub submission: Submission,
-    pub tests: Vec<TestCase> // test all testcases with the submitted code 
+/// A test case embedded inline in the Redis submission message for challenge runs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InlineTestCase {
+    pub input: String,
+    pub expected: String,
+    pub hidden: bool,
+    pub position: i32,
 }

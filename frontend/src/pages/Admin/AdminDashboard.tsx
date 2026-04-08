@@ -1,15 +1,19 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './AdminDashboard.module.css';
 import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const STATS = [
-  { id: 'challenges', label: 'Total Challenges', value: '—', accent: 'purple', icon: <IconBolt />  },
-  { id: 'courses',    label: 'Total Courses',    value: '—', accent: 'blue',   icon: <IconBook />  },
-  { id: 'exams',      label: 'Active Exams',     value: '—', accent: 'green',  icon: <IconClip />  },
-  { id: 'students',   label: 'Total Students',   value: '—', accent: 'amber',  icon: <IconUsers /> },
-] as const;
+interface ApiStats {
+  challenges: number;
+  courses: number;
+  exams: number;
+  groups: number;
+}
+
+// ── Quick access config ────────────────────────────────────────────────────────
 
 const QUICK_ACCESS = [
   {
@@ -110,11 +114,11 @@ function viewAs(role: 'student' | 'teacher', navigate: ReturnType<typeof useNavi
     const user = JSON.parse(raw) as { name?: string };
     if (role === 'student') {
       localStorage.setItem(LS.USER, JSON.stringify({ name: user.name ?? 'Admin', role: 'student' }));
-      localStorage.setItem(LS.TOKEN, 'mock-student-jwt-token');
+      localStorage.setItem(LS.TOKEN, localStorage.getItem(LS.ORIGINAL_TOKEN) ?? '');
       navigate('/dashboard');
     } else {
       localStorage.setItem(LS.USER, JSON.stringify({ name: user.name ?? 'Admin', role: 'teacher', teacherId: 't-001' }));
-      localStorage.setItem(LS.TOKEN, 'mock-teacher-jwt-token');
+      localStorage.setItem(LS.TOKEN, localStorage.getItem(LS.ORIGINAL_TOKEN) ?? '');
       navigate('/teacher/dashboard');
     }
   } catch { /* ignore */ }
@@ -125,16 +129,19 @@ export default function AdminDashboard() {
   const user = getUser();
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const challenges = JSON.parse(localStorage.getItem(LS.A_CHALLENGES) || '[]') as unknown[];
-  const courses    = JSON.parse(localStorage.getItem(LS.A_COURSES)    || '[]') as unknown[];
-  const exams      = JSON.parse(localStorage.getItem(LS.A_EXAMS)      || '[]') as unknown[];
-  const groups     = JSON.parse(localStorage.getItem(LS.A_GROUPS)     || '[]') as unknown[];
-  const statValues: Record<string, number> = {
-    challenges: challenges.length,
-    courses:    courses.length,
-    exams:      exams.length,
-    students:   groups.length,
-  };
+  const [stats, setStats] = useState<ApiStats | null>(null);
+  useEffect(() => {
+    apiFetch<ApiStats>('/api/stats')
+      .then(setStats)
+      .catch(() => { /* non-fatal: stats stay null, show — */ });
+  }, []);
+
+  const STATS = [
+    { id: 'challenges', label: 'Total Challenges', value: stats?.challenges ?? '—', accent: 'purple', icon: <IconBolt />  },
+    { id: 'courses',    label: 'Total Courses',    value: stats?.courses    ?? '—', accent: 'blue',   icon: <IconBook />  },
+    { id: 'exams',      label: 'Active Exams',     value: stats?.exams      ?? '—', accent: 'green',  icon: <IconClip />  },
+    { id: 'students',   label: 'Total Groups',     value: stats?.groups     ?? '—', accent: 'amber',  icon: <IconUsers /> },
+  ] as const;
 
   return (
     <div className={styles.page}>
@@ -157,7 +164,7 @@ export default function AdminDashboard() {
               {s.icon}
             </div>
             <div className={styles.statBody}>
-              <span className={styles.statValue}>{statValues[s.id] ?? s.value}</span>
+              <span className={styles.statValue}>{s.value}</span>
               <span className={styles.statLabel}>{s.label}</span>
             </div>
           </div>
@@ -188,6 +195,22 @@ export default function AdminDashboard() {
               </span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* ── Manage Users ── */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <p className={styles.sectionLabel}>Users</p>
+          <h2 className={styles.sectionTitle}>Manage Users</h2>
+        </div>
+        <div className={styles.quickGrid}>
+          <Link to="/admin/users" className={`${styles.quickCard} ${styles.quickCard_amber}`}>
+            <div className={`${styles.quickIcon} ${styles.quickIcon_amber}`}><IconUsers /></div>
+            <h3 className={styles.quickLabel}>All Users</h3>
+            <p className={styles.quickDesc}>Create, edit, change passwords, ban or delete student, teacher and admin accounts.</p>
+            <span className={`${styles.quickCta} ${styles.quickCta_amber}`}>Go to users <IconArrow /></span>
+          </Link>
         </div>
       </section>
 

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -16,6 +17,7 @@ var jwtSecret = []byte(getJWTSecret())
 func getJWTSecret() string {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
+		log.Println("WARNING: JWT_SECRET not set, using insecure default. Set JWT_SECRET in production.")
 		secret = "your-super-secret-key-change-in-production"
 	}
 	return secret
@@ -106,7 +108,12 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 			return
 		}
 
-		roleStr := userRole.(string)
+		roleStr, ok := userRole.(string)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+			c.Abort()
+			return
+		}
 		for _, role := range roles {
 			if roleStr == role {
 				c.Next()
@@ -175,28 +182,36 @@ func ValidateToken(tokenString string) (*Claims, error) {
 // Helper functions to get user info from context
 func GetUserID(c *gin.Context) int64 {
 	if id, exists := c.Get("user_id"); exists {
-		return id.(int64)
+		if v, ok := id.(int64); ok {
+			return v
+		}
 	}
 	return 0
 }
 
 func GetUserEmail(c *gin.Context) string {
 	if email, exists := c.Get("email"); exists {
-		return email.(string)
+		if v, ok := email.(string); ok {
+			return v
+		}
 	}
 	return ""
 }
 
 func GetUserRole(c *gin.Context) string {
 	if role, exists := c.Get("role"); exists {
-		return role.(string)
+		if v, ok := role.(string); ok {
+			return v
+		}
 	}
 	return ""
 }
 
 func GetOrganisationID(c *gin.Context) int64 {
 	if id, exists := c.Get("organisation_id"); exists {
-		return id.(int64)
+		if v, ok := id.(int64); ok {
+			return v
+		}
 	}
 	return 0
 }

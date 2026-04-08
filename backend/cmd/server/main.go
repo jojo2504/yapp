@@ -2,9 +2,16 @@ package main
 
 import (
 	"backend/internal/api/auth"
+	"backend/internal/api/challenges"
+	"backend/internal/api/courses"
+	"backend/internal/api/exams"
+	"backend/internal/api/groups"
 	"backend/internal/api/health"
 	"backend/internal/api/judge"
+	"backend/internal/api/problems"
+	"backend/internal/api/stats"
 	"backend/internal/api/submit"
+	"backend/internal/api/users"
 	"backend/internal/database"
 	"backend/internal/redisService"
 	"context"
@@ -42,16 +49,25 @@ func SetupRouter(db *gorm.DB, redis redisService.RedisService) *gin.Engine {
 	// Register routes
 	health.RegisterRoutes(r, db)
 	auth.RegisterRoutes(r, db)
-	submit.RegisterRoutes(r, redis)
-	judge.RegisterRoutes(r)
+	problems.RegisterRoutes(r, db)
+	submit.RegisterRoutes(r, redis, db)
+	judge.RegisterRoutes(r, db)
+	challenges.RegisterRoutes(r, db, redis)
+	groups.RegisterRoutes(r, db)
+	courses.RegisterRoutes(r, db)
+	exams.RegisterRoutes(r, db)
+	stats.RegisterRoutes(r, db)
+	users.RegisterRoutes(r, db)
 
 	return r
 }
 
 func main() {
-	// Load (and override) environment from .env in the working directory
+	// Load environment from .env — try current dir first, then parent (for local dev outside Docker)
 	if err := godotenv.Overload(".env"); err != nil {
-		log.Println("Warning: could not load .env file:", err)
+		if err2 := godotenv.Overload("../.env"); err2 != nil {
+			log.Println("Warning: could not load .env file:", err)
+		}
 	}
 
 	// Confirm SUPABASE_DB_URL was picked up
@@ -66,8 +82,16 @@ func main() {
 	db := database.Connect()
 
 	// Connect to Redis
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "redis"
+	}
+	redisPort := os.Getenv("REDIS_PORT")
+	if redisPort == "" {
+		redisPort = "6379"
+	}
 	var redis = redisService.RedisService{Context: context.Background()}
-	redisService.NewClient(&redis, "redis:6379", "", 0)
+	redisService.NewClient(&redis, redisHost+":"+redisPort, "", 0)
 	println("init redis!")
 
 	router := SetupRouter(db, redis)

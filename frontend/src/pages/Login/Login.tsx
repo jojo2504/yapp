@@ -1,6 +1,6 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { mockUser } from '../../mock/data';
 import styles from './Login.module.css';
 
 export default function Login() {
@@ -13,23 +13,6 @@ export default function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-
-    // Test bypass — admin account
-    if (email === mockUser.admin.email && password === mockUser.admin.password) {
-      localStorage.setItem('token', mockUser.admin.token);
-      localStorage.setItem('user', JSON.stringify(mockUser.admin.profile));
-      navigate('/admin/dashboard');
-      return;
-    }
-
-    // Test bypass — teacher account
-    if (email === mockUser.teacher.email && password === mockUser.teacher.password) {
-      localStorage.setItem('token', mockUser.teacher.token);
-      localStorage.setItem('user', JSON.stringify(mockUser.teacher.profile));
-      navigate('/teacher/dashboard');
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch('/api/auth/login', {
@@ -38,9 +21,13 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Invalid email or password.');
-      localStorage.setItem('token', data.token);
-      navigate('/dashboard');
+      if (!res.ok) throw new Error(data.error || data.message || 'Invalid email or password.');
+      localStorage.setItem('token', data.access_token);
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+      const role: string = data.user?.role ?? '';
+      if (role === 'Admin') navigate('/admin/dashboard');
+      else if (role === 'Teacher') navigate('/teacher/dashboard');
+      else navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -101,10 +88,6 @@ export default function Login() {
           <Link to="/signup" className={styles.footerLink}>Sign up</Link>
         </p>
 
-        <p className={styles.testHint}>
-          Test admin: {mockUser.admin.email} / {mockUser.admin.password}<br />
-          Test teacher: {mockUser.teacher.email} / {mockUser.teacher.password}
-        </p>
       </div>
     </div>
   );

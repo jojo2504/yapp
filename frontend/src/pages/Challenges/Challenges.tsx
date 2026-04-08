@@ -1,46 +1,51 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { mockChallenges } from '../../mock/data';
-import type { MockChallenge } from '../../mock/data';
+import { apiFetch } from '../../services/api';
 import styles from './Challenges.module.css';
 
-// ── Types ────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type Difficulty = 'Easy' | 'Medium' | 'Hard';
 type Category =
-  | 'Arrays'
-  | 'Strings'
-  | 'Dynamic Programming'
-  | 'Trees'
-  | 'Graphs'
-  | 'Math'
-  | 'Hash Maps'
-  | 'Sorting'
-  | 'Binary Search'
-  | 'Linked Lists'
-  | 'Stack & Queue';
+  | 'Arrays' | 'Strings' | 'Dynamic Programming' | 'Trees'
+  | 'Graphs' | 'Math' | 'Hash Maps' | 'Sorting' | 'Binary Search'
+  | 'Linked Lists' | 'Stack & Queue';
 
-const DIFFICULTY_FILTERS: Array<'All' | Difficulty> = [
-  'All',
-  'Easy',
-  'Medium',
-  'Hard',
-];
+interface ApiChallenge {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  category: string;
+}
+
+interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: Difficulty;
+  category: string;
+}
+
+function fromApi(raw: ApiChallenge): Challenge {
+  return {
+    id: String(raw.id),
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Difficulty,
+    category: raw.category ?? '',
+  };
+}
+
+const DIFFICULTY_FILTERS: Array<'All' | Difficulty> = ['All', 'Easy', 'Medium', 'Hard'];
 const CATEGORY_FILTERS: Array<'All' | Category> = [
-  'All',
-  'Arrays',
-  'Strings',
-  'Dynamic Programming',
-  'Trees',
-  'Graphs',
-  'Math',
-  'Hash Maps',
-  'Sorting',
-  'Binary Search',
-  'Linked Lists',
-  'Stack & Queue',
+  'All', 'Arrays', 'Strings', 'Dynamic Programming', 'Trees',
+  'Graphs', 'Math', 'Hash Maps', 'Sorting', 'Binary Search',
+  'Linked Lists', 'Stack & Queue',
 ];
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function difficultyPillClass(
   diff: 'All' | Difficulty,
   active: boolean,
@@ -53,22 +58,48 @@ function difficultyPillClass(
   return `${base} ${styles.pillActive}`;
 }
 
-// ── Component ────────────────────────────────────────────────────────
+// ── Component ────────────────────────────────────────────────────────────────
+
 export default function Challenges() {
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState<'All' | Difficulty>('All');
   const [category, setCategory] = useState<'All' | Category>('All');
 
+  useEffect(() => {
+    apiFetch<ApiChallenge[]>('/api/challenges')
+      .then(data => setChallenges(data.map(fromApi)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
   const filtered = useMemo(() => {
-    return mockChallenges.filter((c) => {
-      const matchSearch = c.title
-        .toLowerCase()
-        .includes(search.toLowerCase().trim());
+    return challenges.filter((c) => {
+      const matchSearch = c.title.toLowerCase().includes(search.toLowerCase().trim());
       const matchDiff = difficulty === 'All' || c.difficulty === difficulty;
       const matchCat = category === 'All' || c.category === category;
       return matchSearch && matchDiff && matchCat;
     });
-  }, [search, difficulty, category]);
+  }, [challenges, search, difficulty, category]);
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.container} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted, #888)' }}>
+        Loading challenges…
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className={styles.page}>
+      <div className={styles.container} style={{ padding: '2rem', color: 'var(--error, #f87171)' }}>
+        Error: {error}
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -84,7 +115,7 @@ export default function Challenges() {
             </p>
           </div>
           <span className={styles.countChip}>
-            {mockChallenges.length} challenges
+            {challenges.length} challenges
           </span>
         </div>
 
@@ -118,11 +149,7 @@ export default function Challenges() {
                 const active = difficulty === d;
                 const cls = difficultyPillClass(d, active, styles.pill);
                 return (
-                  <button
-                    key={d}
-                    className={cls}
-                    onClick={() => setDifficulty(d)}
-                  >
+                  <button key={d} className={cls} onClick={() => setDifficulty(d)}>
                     {d}
                   </button>
                 );
@@ -154,7 +181,7 @@ export default function Challenges() {
         <div className={styles.resultsBar}>
           <p className={styles.resultsCount}>
             Showing <strong>{filtered.length}</strong> of{' '}
-            <strong>{mockChallenges.length}</strong> challenges
+            <strong>{challenges.length}</strong> challenges
           </p>
         </div>
 
@@ -170,8 +197,9 @@ export default function Challenges() {
   );
 }
 
-// ── Challenge card ───────────────────────────────────────────────────
-function ChallengeCard({ challenge }: { challenge: MockChallenge }) {
+// ── Challenge card ───────────────────────────────────────────────────────────
+
+function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const cardVariant =
     challenge.difficulty === 'Easy'
       ? styles.cardEasy

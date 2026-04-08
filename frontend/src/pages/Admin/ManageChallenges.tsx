@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import styles from './ManageChallenges.module.css';
 import ChallengeModal from './ChallengeModal';
-import { mockChallenges } from '../../mock/data';
-import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -13,7 +12,7 @@ export type Category =
   | 'Linked Lists' | 'Stack & Queue';
 export type Language = 'javascript' | 'python' | 'cpp' | 'java';
 
-export interface TestCase { id: string; input: string; output: string; }
+export interface TestCase { id: string; input: string; output: string; hidden: boolean; }
 
 export interface StarterCode {
   javascript: string;
@@ -32,10 +31,53 @@ export interface Challenge {
   testCases: TestCase[];
 }
 
-// mockChallenges imported from ../../mock/data
+// ── API mapping ───────────────────────────────────────────────────────────────
 
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+interface ApiChallenge {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  category: string;
+  starter_code: unknown;
+  test_cases: unknown;
+}
+
+const EMPTY_STARTER: StarterCode = {
+  javascript: 'function solution() {\n  // Your code here\n}',
+  python:     'def solution():\n    # Your code here\n    pass',
+  cpp:        '#include <bits/stdc++.h>\nusing namespace std;\n\nvoid solution() {\n    // Your code here\n}',
+  java:       'class Solution {\n    public void solution() {\n        // Your code here\n    }\n}',
+};
+
+function fromApi(raw: ApiChallenge): Challenge {
+  return {
+    id: String(raw.id),
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Difficulty,
+    category: (raw.category ?? 'Arrays') as Category,
+    starterCode: (raw.starter_code as StarterCode) ?? EMPTY_STARTER,
+    testCases: Array.isArray(raw.test_cases)
+      ? (raw.test_cases as Array<{ id?: string; input: string; output: string; hidden?: boolean }>).map((tc, i) => ({
+          id: tc.id ?? String(i),
+          input: tc.input ?? '',
+          output: tc.output ?? '',
+          hidden: tc.hidden ?? false,
+        }))
+      : [],
+  };
+}
+
+function toApi(c: Omit<Challenge, 'id'>): object {
+  return {
+    title: c.title,
+    description: c.description,
+    difficulty: c.difficulty,
+    category: c.category,
+    starter_code: c.starterCode,
+    test_cases: c.testCases,
+  };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -71,49 +113,59 @@ function IconTrash() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ManageChallenges() {
-  const [challenges, setChallenges] = useState<Challenge[]>(() => {
-    try {
-      const raw = localStorage.getItem(LS.A_CHALLENGES);
-      if (raw) return JSON.parse(raw) as Challenge[];
-    } catch { /* ignore */ }
-    return mockChallenges;
-  });
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
   const [modalOpen, setModalOpen]   = useState(false);
   const [editing, setEditing]       = useState<Challenge | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem(LS.A_CHALLENGES, JSON.stringify(challenges));
-  }, [challenges]);
-
-  function openCreate() {
-    setEditing(null);
-    setModalOpen(true);
+  function loadChallenges() {
+    setLoading(true);
+    apiFetch<ApiChallenge[]>('/api/challenges')
+      .then(data => setChallenges(data.map(fromApi)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }
 
-  function openEdit(c: Challenge) {
-    setEditing(c);
-    setModalOpen(true);
-  }
+  useEffect(() => { loadChallenges(); }, []);
 
-  function handleSave(data: Omit<Challenge, 'id'>) {
-    if (editing) {
-      setChallenges(prev =>
-        prev.map(c => c.id === editing.id ? { ...data, id: c.id } : c)
-      );
-    } else {
-      setChallenges(prev => [...prev, { ...data, id: generateId() }]);
-    }
+  function openCreate() { setEditing(null); setModalOpen(true); }
+  function openEdit(c: Challenge) { setEditing(c); setModalOpen(true); }
+
+  async function handleSave(data: Omit<Challenge, 'id'>) {
+    const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);
+    setError('');
+    try {
+      if (currentEditing) {
+        const updated = await apiFetch<ApiChallenge>(`/api/challenges/${currentEditing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(toApi(data)),
+        });
+        setChallenges(prev => prev.map(c => c.id === currentEditing.id ? fromApi(updated) : c));
+      } else {
+        const created = await apiFetch<ApiChallenge>('/api/challenges', {
+          method: 'POST',
+          body: JSON.stringify(toApi(data)),
+        });
+        setChallenges(prev => [...prev, fromApi(created)]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save challenge.');
+      loadChallenges();
+    }
   }
 
   async function handleDelete(id: string) {
-    try {
-      await fetch(`/api/challenges/${id}`, { method: 'DELETE' });
-    } catch { /* optimistic delete */ }
-    setChallenges(prev => prev.filter(c => c.id !== id));
     setConfirmDeleteId(null);
+    try {
+      await apiFetch(`/api/challenges/${id}`, { method: 'DELETE' });
+      setChallenges(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete challenge.');
+    }
   }
 
   const DIFF_CLASS: Record<Difficulty, string> = {
@@ -121,6 +173,18 @@ export default function ManageChallenges() {
     Medium: styles.badgeMedium,
     Hard:   styles.badgeHard,
   };
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <p className={styles.headerLabel}>Admin</p>
+          <h1 className={styles.headerTitle}>Manage Challenges</h1>
+        </div>
+      </div>
+      <div className={styles.list} style={{ padding: '2rem', color: 'var(--text-muted, #888)' }}>Loading…</div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -136,6 +200,8 @@ export default function ManageChallenges() {
           <IconPlus /> Create Challenge
         </button>
       </div>
+
+      {error && <p style={{ color: 'var(--error, #f87171)', padding: '0 0 1rem' }}>{error}</p>}
 
       {/* ── Challenge list ── */}
       <div className={styles.list}>

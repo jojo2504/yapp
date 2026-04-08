@@ -352,7 +352,7 @@ export default function ExamGuard({ examId }: { examId?: string } = {}) {
 
           {/* Right — code editor */}
           <div className={styles.examRight}>
-            <CodeEditor examId="demo-exam" studentId="demo-student" />
+            <CodeEditor />
           </div>
 
         </div>

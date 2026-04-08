@@ -1,10 +1,25 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CodeEditor from '../../components/UI/CodeEditor';
-import { LS } from '../../constants/storage';
 import styles from './LessonPage.module.css';
+import { apiFetch } from '../../services/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ApiChallenge {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  category: string;
+  test_cases: unknown;
+}
+
+interface ApiCourse {
+  id: number;
+  name: string;
+  challenge_ids: number[];
+}
 
 interface TestCase {
   id: string;
@@ -23,19 +38,11 @@ interface Challenge {
 
 interface Course {
   id: string;
-  title: string;
+  name: string;
   challengeIds: string[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function loadFromLS<T>(key: string): T[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as T[];
-  } catch { /* ignore */ }
-  return [];
-}
 
 const DIFF_CLASS: Record<string, string> = {
   Easy:   'badgeEasy',
@@ -49,21 +56,52 @@ export default function LessonPage() {
   const { courseId, challengeId } = useParams<{ courseId: string; challengeId: string }>();
   const navigate = useNavigate();
 
-  const course = useMemo(
-    () => loadFromLS<Course>(LS.A_COURSES).find(c => c.id === courseId) ?? null,
-    [courseId],
+  const [course, setCourse]       = useState<Course | null>(null);
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch<ApiCourse>(`/api/courses/${courseId}`),
+      apiFetch<ApiChallenge>(`/api/challenges/${challengeId}`),
+    ])
+      .then(([foundCourse, foundChallenge]) => {
+        setCourse({
+          id: String(foundCourse.id),
+          name: foundCourse.name ?? '',
+          challengeIds: (foundCourse.challenge_ids ?? []).map(String),
+        });
+
+        setChallenge({
+          id: String(foundChallenge.id),
+          title: foundChallenge.title ?? '',
+          description: foundChallenge.description ?? '',
+          difficulty: (['Easy', 'Medium', 'Hard'].includes(foundChallenge.difficulty)
+            ? foundChallenge.difficulty : 'Easy') as Challenge['difficulty'],
+          category: foundChallenge.category ?? '',
+          testCases: Array.isArray(foundChallenge.test_cases)
+            ? (foundChallenge.test_cases as TestCase[])
+            : [],
+        });
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [courseId, challengeId]);
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.container}>
+        <p style={{ color: 'var(--text-muted, #888)', padding: '1rem 0' }}>Loading…</p>
+      </div>
+    </div>
   );
 
-  const challenge = useMemo(
-    () => loadFromLS<Challenge>(LS.A_CHALLENGES).find(c => c.id === challengeId) ?? null,
-    [challengeId],
-  );
-
-  if (!course || !challenge) {
+  if (error || !course || !challenge) {
     return (
       <div className={styles.page}>
         <div className={styles.notFound}>
-          <p className={styles.notFoundTitle}>Lesson not found.</p>
+          <p className={styles.notFoundTitle}>{error || 'Lesson not found.'}</p>
           <Link to="/courses" className={styles.backLink}>← Back to Courses</Link>
         </div>
       </div>
@@ -78,7 +116,7 @@ export default function LessonPage() {
         <nav className={styles.breadcrumb}>
           <Link to="/courses" className={styles.breadcrumbLink}>Courses</Link>
           <span className={styles.breadcrumbSep}>›</span>
-          <Link to={`/courses/${courseId}`} className={styles.breadcrumbLink}>{course.title}</Link>
+          <Link to={`/courses/${courseId}`} className={styles.breadcrumbLink}>{course.name}</Link>
           <span className={styles.breadcrumbSep}>›</span>
           <span className={styles.breadcrumbCurrent}>{challenge.title}</span>
         </nav>
@@ -98,7 +136,7 @@ export default function LessonPage() {
         </section>
 
         {/* Examples */}
-        {challenge.testCases?.length > 0 && (
+        {challenge.testCases.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Examples</h2>
             <div className={styles.exampleList}>
@@ -127,7 +165,7 @@ export default function LessonPage() {
           className={styles.backBtn}
           onClick={() => navigate(`/courses/${courseId}`)}
         >
-          ← Back to {course.title}
+          ← Back to {course.name}
         </button>
 
       </div>

@@ -15,8 +15,8 @@ type Problem struct {
 	MemoryLimit int `json:"memory_limit_mb" gorm:"default:256"` // mégaoctets
 
 	// Metadata
-	AuthorID *int64 `json:"author_id,omitempty" gorm:"index"`
-	Points   int    `json:"points" gorm:"default:100"`
+	AuthorID *int64  `json:"author_id,omitempty" gorm:"index"`
+	Points   *int32  `json:"points" gorm:"default:100"`
 
 	// Code templates
 	StarterCode  *string `json:"starter_code,omitempty" gorm:"type:text"`

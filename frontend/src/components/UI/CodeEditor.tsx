@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
+import { apiFetch } from '../../services/api';
 import styles from './CodeEditor.module.css';
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -12,12 +13,19 @@ const LANGUAGE_LABELS: Record<Language, string> = {
   java:       'Java',
 };
 
-// Monaco uses 'cpp' for C++ — all others match directly
 const MONACO_LANG: Record<Language, string> = {
   javascript: 'javascript',
   python:     'python',
   cpp:        'cpp',
   java:       'java',
+};
+
+// Language values the backend/judge expects
+const JUDGE_LANG: Record<Language, string> = {
+  javascript: 'Javascript',
+  python:     'Python',
+  cpp:        'Cpp',
+  java:       'Java',
 };
 
 const DEFAULT_CODE: Record<Language, string> = {
@@ -54,52 +62,117 @@ int main() {
 }`,
 };
 
-// ── Component ─────────────────────────────────────────────────────
-interface Props {
-  examId:    string;
-  studentId: string;
+// ── Types ─────────────────────────────────────────────────────────
+type RunStatus = 'idle' | 'running' | 'done' | 'error' | 'timeout';
+
+interface RunResult {
+  status:   RunStatus;
+  verdict?: string;
+  stdout?:  string;
+  stderr?:  string;
 }
 
-export default function CodeEditor({ examId, studentId }: Props) {
+// ── Polling helper ─────────────────────────────────────────────────
+async function pollSubmission(id: number, timeoutMs = 20_000): Promise<RunResult> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 800));
+    try {
+      const sub = await apiFetch<{
+        verdict:       string;
+        judge_output?: string;
+        message?:      string;
+      }>(`/api/submissions/${id}`);
+      if (sub.verdict !== 'Pending') {
+        return {
+          status:  'done',
+          verdict: sub.verdict,
+          stdout:  sub.judge_output ?? undefined,
+          stderr:  sub.message ?? undefined,
+        };
+      }
+    } catch {
+      // network blip — keep polling
+    }
+  }
+  return { status: 'timeout' };
+}
+
+interface CodeEditorProps {
+  /** Called whenever the language or code changes, so a parent can track state. */
+  onStateChange?: (language: string, code: string) => void;
+}
+
+// ── Component ─────────────────────────────────────────────────────
+export default function CodeEditor({ onStateChange }: CodeEditorProps = {}) {
   const [language, setLanguage] = useState<Language>('javascript');
-  const [output,   setOutput]   = useState<string | null>(null);
+  const [result,   setResult]   = useState<RunResult>({ status: 'idle' });
   const [running,  setRunning]  = useState(false);
 
-  // Keep latest code without making Monaco a controlled component
   const codeRef = useRef<string>(DEFAULT_CODE.javascript);
 
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
     codeRef.current = DEFAULT_CODE[lang];
-    setOutput(null);
+    setResult({ status: 'idle' });
+    onStateChange?.(lang, DEFAULT_CODE[lang]);
   };
 
   const handleRun = async () => {
     setRunning(true);
-    setOutput(null);
+    setResult({ status: 'running' });
     try {
-      const res  = await fetch('/api/exam/run', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          examId,
-          studentId,
+      const res = await apiFetch<{ id: number }>('/api/run', {
+        method: 'POST',
+        body: JSON.stringify({
           code:     codeRef.current,
-          language,
+          language: JUDGE_LANG[language],
         }),
       });
-      const data = await res.json();
-      setOutput(
-        typeof data.output === 'string'
-          ? data.output
-          : JSON.stringify(data, null, 2),
-      );
-    } catch {
-      setOutput('Error: failed to reach the code runner.');
+      const polled = await pollSubmission(res.id);
+      setResult(polled);
+    } catch (e: unknown) {
+      setResult({
+        status: 'error',
+        stderr: e instanceof Error ? e.message : 'Failed to reach server.',
+      });
     } finally {
       setRunning(false);
     }
   };
+
+  // ── Output display ────────────────────────────────────────────────
+  let outputContent: React.ReactNode;
+  switch (result.status) {
+    case 'idle':
+      outputContent = <span className={styles.outputPlaceholder}>Run your code to see output…</span>;
+      break;
+    case 'running':
+      outputContent = <span className={styles.outputPlaceholder}>⏳ Running…</span>;
+      break;
+    case 'timeout':
+      outputContent = <span className={styles.outputError}>⏱ Timed out — judge did not respond within 20 seconds.</span>;
+      break;
+    case 'error':
+      outputContent = <span className={styles.outputError}>{result.stderr}</span>;
+      break;
+    case 'done': {
+      const isOk = result.verdict === 'Accepted';
+      outputContent = (
+        <>
+          <span className={isOk ? styles.outputOk : styles.outputError}>
+            {isOk ? 'OK' : result.verdict}
+          </span>
+          {result.stdout && <span>{'\n'}{result.stdout}</span>}
+          {result.stderr && <span className={styles.outputError}>{'\n'}{result.stderr}</span>}
+          {!result.stdout && !result.stderr && (
+            <span className={styles.outputPlaceholder}>{'\n'}(no output)</span>
+          )}
+        </>
+      );
+      break;
+    }
+  }
 
   return (
     <div className={styles.container}>
@@ -128,7 +201,6 @@ export default function CodeEditor({ examId, studentId }: Props) {
       </div>
 
       {/* ── Monaco editor ── */}
-      {/* key={language} remounts the editor on language change, resetting content */}
       <div className={styles.editorWrap}>
         <Editor
           key={language}
@@ -136,7 +208,7 @@ export default function CodeEditor({ examId, studentId }: Props) {
           language={MONACO_LANG[language]}
           defaultValue={DEFAULT_CODE[language]}
           theme="vs-dark"
-          onChange={v => { codeRef.current = v ?? ''; }}
+          onChange={v => { codeRef.current = v ?? ''; onStateChange?.(language, v ?? ''); }}
           options={{
             fontSize:             13,
             fontFamily:           "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
@@ -155,16 +227,14 @@ export default function CodeEditor({ examId, studentId }: Props) {
       <div className={styles.outputPanel}>
         <div className={styles.outputHeader}>
           <span className={styles.outputLabel}>Output</span>
-          {output !== null && (
-            <button className={styles.clearBtn} onClick={() => setOutput(null)}>
+          {result.status !== 'idle' && (
+            <button className={styles.clearBtn} onClick={() => setResult({ status: 'idle' })}>
               Clear
             </button>
           )}
         </div>
         <pre className={styles.outputContent}>
-          {output === null
-            ? <span className={styles.outputPlaceholder}>Run your code to see output…</span>
-            : output}
+          {outputContent}
         </pre>
       </div>
 

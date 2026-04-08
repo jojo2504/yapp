@@ -29,7 +29,10 @@ func AddSubmission(rs *RedisService, submission submission.Submission) {
     }
 
     println("trying to lpush")
-    rs.rdb.LPush(rs.Context, "queue", serialized)
+    if err := rs.rdb.LPush(rs.Context, "queue", serialized).Err(); err != nil {
+        fmt.Println("LPush failed:", err)
+        return
+    }
     Publish(rs, "queue", "pushed new submission")
     VerifyQueue(rs)
 }

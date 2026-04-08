@@ -2,6 +2,7 @@ package problems
 
 import (
 	"backend/internal/api/middleware"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -26,6 +27,7 @@ func (h *Handler) List(c *gin.Context) {
 
 	response, err := h.service.List(params)
 	if err != nil {
+		log.Printf("ERROR List problems: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch problems"})
 		return
 	}
@@ -66,6 +68,7 @@ func (h *Handler) Create(c *gin.Context) {
 	authorID := middleware.GetUserID(c)
 	problem, err := h.service.Create(req, authorID)
 	if err != nil {
+		log.Printf("ERROR Create problem: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create problem"})
 		return
 	}

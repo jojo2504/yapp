@@ -10,7 +10,7 @@ type Session struct {
 	base.BaseModel
 
 	UserID    int64     `json:"user_id" gorm:"not null;index"`
-	Token     string    `json:"token" gorm:"size:255;not null;uniqueIndex"`
+	Token     string    `json:"token" gorm:"type:text;not null;uniqueIndex"`
 	ExpiresAt time.Time `json:"expires_at" gorm:"not null;index"`
 
 	// Relations

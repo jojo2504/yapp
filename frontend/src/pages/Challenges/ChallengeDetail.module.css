@@ -524,6 +524,170 @@
   animation: spin 1s linear infinite;
 }
 
+/* ── Submit state classes ────────────────────────────────────────── */
+.btnSubmitBusy {
+  background: #1e293b;
+  color: #475569;
+  cursor: not-allowed;
+}
+
+.btnViewResults {
+  padding: 0.45rem 1rem;
+  border: 1px solid #1c1c28;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.825rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+
+.btnViewResults:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+}
+
+.hiddenNote {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: #334155;
+  font-style: italic;
+}
+
+/* ── Submit results ──────────────────────────────────────────────── */
+.resultsWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.resultSummary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #0b0b0f;
+  border: 1px solid #1c1c28;
+  border-radius: 10px;
+}
+
+.verdictOk {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.verdictFail {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f87171;
+}
+
+.resultScore {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.testResultList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.testResult {
+  border: 1px solid #1c1c28;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.testResultPass {
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+.testResultFail {
+  border-color: rgba(248, 113, 113, 0.2);
+}
+
+.testResultHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  background: #0b0b0f;
+}
+
+.testResultIcon {
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 14px;
+}
+
+.testResultPass .testResultIcon { color: #34d399; }
+.testResultFail .testResultIcon { color: #f87171; }
+
+.testResultLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  flex: 1;
+}
+
+.testResultVerdict {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.testResultPass .testResultVerdict { color: #34d399; }
+.testResultFail .testResultVerdict { color: #f87171; }
+
+.testResultTime {
+  font-size: 0.7rem;
+  color: #334155;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.testResultBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid #1c1c28;
+  padding: 0.6rem 0.75rem;
+  background: #080b0f;
+}
+
+.testResultRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.testResultRowLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #334155;
+  width: 56px;
+  flex-shrink: 0;
+  padding-top: 0.35rem;
+}
+
+.testResultPre {
+  margin: 0.2rem 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.testResultPreOk   { color: #34d399; }
+.testResultPreFail { color: #f87171; }
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 860px) {
   .body {

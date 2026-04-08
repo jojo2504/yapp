@@ -1,8 +1,22 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { mockSubmissions, mockChallenges } from '../../mock/data';
 import styles from './StudentDashboard.module.css';
 import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ApiStats {
+  submissions: number;
+  solved: number;
+  recent_submissions: {
+    id: number;
+    problem_id: number;
+    language: string;
+    verdict: string;
+    created_at: string;
+  }[];
+}
 
 // ── Quick access (static) ────────────────────────────────────────────────────
 
@@ -70,10 +84,13 @@ function IconArrow() {
   );
 }
 
-function activityIcon(type: string) {
-  if (type === 'challenge') return <IconBolt />;
-  if (type === 'course')    return <IconBook />;
-  return <IconClip />;
+function IconArrowLeft14() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -101,23 +118,6 @@ function getOriginalUser() {
   return null;
 }
 
-function loadFromLS<T>(key: string): T[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as T[];
-  } catch { /* ignore */ }
-  return [];
-}
-
-function IconArrowLeft14() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  );
-}
-
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function StudentDashboard() {
@@ -127,43 +127,18 @@ export default function StudentDashboard() {
   const originalUser = getOriginalUser();
   const isAdminPreview = originalUser?.role === 'admin';
 
-  // ── Live stats ────────────────────────────────────────────────────────────
-  const solvedCount = useMemo(() =>
-    Object.values(mockSubmissions).filter(subs => subs.some(s => s.status === 'Accepted')).length,
-  []);
+  const [stats, setStats] = useState<ApiStats | null>(null);
 
-  const coursesCount = useMemo(() => loadFromLS<{ id: string }>(LS.A_COURSES).length, []);
-
-  const upcomingExamsCount = useMemo(() => {
-    const now = new Date();
-    return loadFromLS<{ startDatetime: string }>(LS.A_EXAMS)
-      .filter(e => new Date(e.startDatetime) > now).length;
+  useEffect(() => {
+    apiFetch<ApiStats>('/api/stats/student')
+      .then(setStats)
+      .catch(() => { /* non-fatal */ });
   }, []);
 
   const STATS = [
-    { id: 'challenges', label: 'Challenges Solved', value: solvedCount,        icon: <IconBolt />, accent: 'purple' },
-    { id: 'courses',    label: 'Courses Enrolled',  value: coursesCount,       icon: <IconBook />, accent: 'blue'   },
-    { id: 'exams',      label: 'Upcoming Exams',    value: upcomingExamsCount, icon: <IconClip />, accent: 'green'  },
+    { id: 'solved',       label: 'Problems Solved',    value: stats?.solved       ?? 0, icon: <IconBolt />, accent: 'purple' },
+    { id: 'submissions',  label: 'Total Submissions',  value: stats?.submissions  ?? 0, icon: <IconClip />, accent: 'blue'   },
   ];
-
-  // ── Recent activity from mock submissions ─────────────────────────────────
-  const activity = useMemo(() => {
-    const titleMap = Object.fromEntries(mockChallenges.map(c => [c.id, c.title]));
-    const items: { id: string; type: string; title: string; detail: string; time: string }[] = [];
-    for (const [cid, subs] of Object.entries(mockSubmissions)) {
-      for (const sub of subs) {
-        items.push({
-          id:     sub.id,
-          type:   'challenge',
-          title:  titleMap[cid] ?? `Challenge ${cid}`,
-          detail: `${sub.language} · ${sub.status}`,
-          time:   sub.date,
-        });
-      }
-    }
-    items.sort((a, b) => b.time.localeCompare(a.time));
-    return items.slice(0, 5);
-  }, []);
 
   function restoreAdmin() {
     const originalUserStr = localStorage.getItem(LS.ORIGINAL_USER);
@@ -225,22 +200,7 @@ export default function StudentDashboard() {
           </div>
 
           <div className={styles.activityList}>
-            {activity.length === 0 ? (
-              <p className={styles.activityEmpty}>No recent activity yet.</p>
-            ) : (
-              activity.map(item => (
-                <div key={item.id} className={styles.activityItem}>
-                  <div className={`${styles.activityIcon} ${styles[`activityIcon_${item.type}`]}`}>
-                    {activityIcon(item.type)}
-                  </div>
-                  <div className={styles.activityBody}>
-                    <span className={styles.activityTitle}>{item.title}</span>
-                    <span className={styles.activityDetail}>{item.detail}</span>
-                  </div>
-                  <span className={styles.activityTime}>{item.time}</span>
-                </div>
-              ))
-            )}
+            <p className={styles.activityEmpty}>No recent activity yet.</p>
           </div>
         </section>
 

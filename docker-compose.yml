@@ -9,7 +9,6 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - postgres
       - backend-go
 
   backend-go:
@@ -20,21 +19,14 @@ services:
       - ./backend:/app
     ports:
       - "8080:8080"
+    env_file: ".env"
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=yapp
-      - DB_SSLMODE=disable
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     stop_grace_period: 2s
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
 
   rust-judge:
     build:
@@ -47,7 +39,10 @@ services:
       - shared:/shared
     stop_grace_period: 2s
     depends_on:
-      - backend-go
+      backend-go:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   rust-test:
     build:
@@ -76,38 +71,7 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres:
-    image: postgres:16-alpine
-    env_file: "backend/.env"
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: yapp
-      PGDATA: /data/postgres
-    volumes:
-      - postgres-data:/data/postgres
-    ports:
-      - "5432:5432"
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d yapp"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Interface web pour gérer la BDD (dev only)
-  adminer:
-    image: adminer:latest
-    ports:
-      - "8081:8080"
-    depends_on:
-      - postgres
-    profiles:
-      - dev
-
 volumes:
   redis-data:
-  postgres-data:
   rust-target:
   shared:
-

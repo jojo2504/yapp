@@ -63,10 +63,11 @@ func (h *Handler) Logout(c *gin.Context) {
 	// Get token from header
 	authHeader := c.GetHeader("Authorization")
 	parts := strings.Split(authHeader, " ")
-	token := ""
-	if len(parts) == 2 {
-		token = parts[1]
+	if len(parts) != 2 || parts[1] == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing token"})
+		return
 	}
+	token := parts[1]
 
 	if err := h.service.Logout(userID, token); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to logout"})
@@ -91,6 +92,29 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// AdminCreateUser handles admin-only user creation with any role
+func (h *Handler) AdminCreateUser(c *gin.Context) {
+	var req AdminCreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data", "details": err.Error()})
+		return
+	}
+
+	response, err := h.service.CreateUserAsAdmin(req)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "already registered") {
+			status = http.StatusConflict
+		} else if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "invalid role") {
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, response)
 }
 
 // GetMe returns the current user's profile

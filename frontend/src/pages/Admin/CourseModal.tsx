@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Course } from './ManageCourses';
 import styles from './CourseModal.module.css';
+import { apiFetch } from '../../services/api';
 
 // ── Challenge data for the picker ─────────────────────────────────────────────
-// (lightweight version — only the fields needed for display)
 
 type PickerDifficulty = 'Easy' | 'Medium' | 'Hard';
 
@@ -14,7 +14,12 @@ interface PickerChallenge {
   category: string;
 }
 
-const ALL_CHALLENGES: PickerChallenge[] = [];
+interface ApiChallenge {
+  id: number;
+  title: string;
+  difficulty: string;
+  category: string;
+}
 
 const DIFF_CLASS: Record<PickerDifficulty, string> = {
   Easy:   styles.diffEasy,
@@ -72,27 +77,29 @@ interface Props {
 // ── Form shape ────────────────────────────────────────────────────────────────
 
 interface CourseForm {
-  title: string;
+  name: string;
   description: string;
   thumbnail: string;
   challengeIds: string[]; // ordered
 }
 
 function emptyForm(): CourseForm {
-  return { title: '', description: '', thumbnail: '', challengeIds: [] };
+  return { name: '', description: '', thumbnail: '', challengeIds: [] };
 }
 
 function formFromCourse(c: Course): CourseForm {
-  return { title: c.title, description: c.description, thumbnail: c.thumbnail, challengeIds: [...c.challengeIds] };
+  return { name: c.name, description: c.description, thumbnail: c.thumbnail, challengeIds: [...c.challengeIds] };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function CourseModal({ initial, onClose, onSave }: Props) {
   const [form, setForm]       = useState<CourseForm>(initial ? formFromCourse(initial) : emptyForm());
-  const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [imgError, setImgError] = useState(false);
+
+  const [challenges, setChallenges]           = useState<PickerChallenge[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
 
   // ── Drag state ────────────────────────────────────────────────────────────────
   const dragIdx     = useRef<number | null>(null);
@@ -110,6 +117,19 @@ export default function CourseModal({ initial, onClose, onSave }: Props) {
       document.body.style.overflow = '';
     };
   }, [handleEsc]);
+
+  // Fetch available challenges for the picker
+  useEffect(() => {
+    apiFetch<ApiChallenge[]>('/api/challenges')
+      .then(data => setChallenges(data.map(c => ({
+        id: String(c.id),
+        title: c.title ?? '',
+        difficulty: (['Easy', 'Medium', 'Hard'].includes(c.difficulty) ? c.difficulty : 'Easy') as PickerDifficulty,
+        category: c.category ?? '',
+      }))))
+      .catch(() => { /* leave picker empty on error */ })
+      .finally(() => setChallengesLoading(false));
+  }, []);
 
   // Reset img error when thumbnail changes
   useEffect(() => { setImgError(false); }, [form.thumbnail]);
@@ -164,34 +184,16 @@ export default function CourseModal({ initial, onClose, onSave }: Props) {
 
   // ── Submit ────────────────────────────────────────────────────────────────────
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim()) { setError('Title is required.'); return; }
+    if (!form.name.trim()) { setError('Title is required.'); return; }
     setError('');
-    setLoading(true);
-    try {
-      const url    = initial ? `/api/courses/${initial.id}` : '/api/courses';
-      const method = initial ? 'PUT' : 'POST';
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title:        form.title,
-          description:  form.description,
-          thumbnail:    form.thumbnail,
-          challengeIds: form.challengeIds,
-          ...(initial ? { id: initial.id } : {}),
-        }),
-      });
-    } catch { /* optimistic */ } finally {
-      setLoading(false);
-      onSave(form);
-    }
+    onSave(form);
   }
 
   const isEditing       = Boolean(initial);
   const selectedChallenges = form.challengeIds
-    .map(id => ALL_CHALLENGES.find(c => c.id === id))
+    .map(id => challenges.find(c => c.id === id))
     .filter((c): c is PickerChallenge => Boolean(c));
 
   const showThumbPreview = form.thumbnail && !imgError;
@@ -226,8 +228,8 @@ export default function CourseModal({ initial, onClose, onSave }: Props) {
               type="text"
               className={styles.input}
               placeholder="e.g. Introduction to Algorithms"
-              value={form.title}
-              onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
+              value={form.name}
+              onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
               required
             />
           </div>
@@ -284,7 +286,7 @@ export default function CourseModal({ initial, onClose, onSave }: Props) {
             <div className={styles.pickerHeader}>
               <span className={styles.label}>Challenges</span>
               <span className={styles.pickerCount}>
-                {form.challengeIds.length} of {ALL_CHALLENGES.length} selected
+                {form.challengeIds.length} of {challenges.length} selected
               </span>
             </div>
 
@@ -293,31 +295,37 @@ export default function CourseModal({ initial, onClose, onSave }: Props) {
               {/* Left: checklist */}
               <div className={styles.checklist}>
                 <p className={styles.pickerPanelLabel}>Available</p>
-                {ALL_CHALLENGES.map(c => {
-                  const checked = form.challengeIds.includes(c.id);
-                  return (
-                    <label
-                      key={c.id}
-                      className={`${styles.checkItem} ${checked ? styles.checkItemChecked : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        className={styles.checkbox}
-                        checked={checked}
-                        onChange={() => toggleChallenge(c.id)}
-                      />
-                      <span className={styles.checkItemText}>
-                        <span className={styles.checkItemTitle}>{c.title}</span>
-                        <span className={styles.checkItemMeta}>
-                          <span className={`${styles.diffBadge} ${DIFF_CLASS[c.difficulty]}`}>
-                            {c.difficulty}
+                {challengesLoading ? (
+                  <p style={{ color: 'var(--text-muted, #888)', padding: '0.5rem 0' }}>Loading challenges…</p>
+                ) : challenges.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted, #888)', padding: '0.5rem 0' }}>No challenges available.</p>
+                ) : (
+                  challenges.map(c => {
+                    const checked = form.challengeIds.includes(c.id);
+                    return (
+                      <label
+                        key={c.id}
+                        className={`${styles.checkItem} ${checked ? styles.checkItemChecked : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className={styles.checkbox}
+                          checked={checked}
+                          onChange={() => toggleChallenge(c.id)}
+                        />
+                        <span className={styles.checkItemText}>
+                          <span className={styles.checkItemTitle}>{c.title}</span>
+                          <span className={styles.checkItemMeta}>
+                            <span className={`${styles.diffBadge} ${DIFF_CLASS[c.difficulty]}`}>
+                              {c.difficulty}
+                            </span>
+                            <span className={styles.checkItemCategory}>{c.category}</span>
                           </span>
-                          <span className={styles.checkItemCategory}>{c.category}</span>
                         </span>
-                      </span>
-                    </label>
-                  );
-                })}
+                      </label>
+                    );
+                  })
+                )}
               </div>
 
               {/* Right: ordered + drag-to-reorder */}
@@ -381,9 +389,8 @@ export default function CourseModal({ initial, onClose, onSave }: Props) {
             type="submit"
             form="course-form"
             className={styles.btnSave}
-            disabled={loading}
           >
-            {loading ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Course'}
+            {isEditing ? 'Save Changes' : 'Create Course'}
           </button>
         </div>
 

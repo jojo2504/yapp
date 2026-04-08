@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Signup.module.css';
 
-type Role = 'student' | 'teacher' | 'admin';
+type Role = 'student' | 'teacher';
 
 function IconGraduationCap() {
   return (
@@ -18,14 +18,6 @@ function IconChalkboard() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="3" width="20" height="14" rx="2" />
       <path d="M8 21h8M12 17v4" />
-    </svg>
-  );
-}
-
-function IconShield() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   );
 }
@@ -54,11 +46,12 @@ export default function Signup() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Registration failed. Please try again.');
-      localStorage.setItem('token', data.token);
+      if (!res.ok) throw new Error(data.error || data.message || 'Registration failed. Please try again.');
+      localStorage.setItem('token', data.access_token);
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
@@ -156,14 +149,6 @@ export default function Signup() {
               >
                 <IconChalkboard />
                 Teacher
-              </button>
-              <button
-                type="button"
-                className={`${styles.roleOption} ${role === 'admin' ? styles.roleOptionActive : ''}`}
-                onClick={() => setRole('admin')}
-              >
-                <IconShield />
-                Admin
               </button>
             </div>
           </div>

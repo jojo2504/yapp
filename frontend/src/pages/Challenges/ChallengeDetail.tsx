@@ -1,16 +1,103 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import CodeEditor from '../../components/UI/CodeEditor';
-import { mockChallenges, mockSubmissions } from '../../mock/data';
-import type { MockSubmission } from '../../mock/data';
+import { apiFetch } from '../../services/api';
 import styles from './ChallengeDetail.module.css';
-import { LS } from '../../constants/storage';
 
-// ── Types ─────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type Tab = 'problem' | 'examples' | 'submissions';
-type SubmissionStatus = 'Accepted' | 'Wrong Answer' | 'TLE';
+
+interface ApiChallenge {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  category: string;
+  starter_code: unknown;
+  test_cases: unknown;
+}
+
+interface ApiTestCase {
+  id?: string;
+  input: string;
+  output?: string;
+  expected?: string;
+  hidden?: boolean;
+}
+
+interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  category: string;
+  testCases: ApiTestCase[];
+}
+
+function fromApi(raw: ApiChallenge): Challenge {
+  let testCases: ApiTestCase[] = [];
+  if (Array.isArray(raw.test_cases)) {
+    testCases = raw.test_cases as ApiTestCase[];
+  }
+  return {
+    id: String(raw.id),
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Challenge['difficulty'],
+    category: raw.category ?? '',
+    testCases,
+  };
+}
+
+// ── Challenge judge output types ───────────────────────────────────────────────
+
+interface ChallengeTestCaseResult {
+  input: string;
+  expected: string;
+  actual: string | null;
+  verdict: string;
+  hidden: boolean;
+  time_ms: number;
+}
+
+interface ChallengeJudgeOutput {
+  test_cases: ChallengeTestCaseResult[];
+  passed: number;
+  total: number;
+}
+
+// ── Submission polling ────────────────────────────────────────────────────────
+
+type SubmitPhase = 'idle' | 'pending' | 'done' | 'error';
+
+interface SubmitState {
+  phase: SubmitPhase;
+  submissionId?: number;
+  verdict?: string;
+  results?: ChallengeJudgeOutput;
+  error?: string;
+}
+
+async function pollSubmission(id: number, timeoutMs = 30_000): Promise<{
+  verdict: string;
+  judge_output?: string;
+}> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 800));
+    try {
+      const sub = await apiFetch<{ verdict: string; judge_output?: string }>(`/api/submissions/${id}`);
+      if (sub.verdict !== 'Pending') return sub;
+    } catch {
+      // network blip — keep polling
+    }
+  }
+  throw new Error('Judge did not respond within 30 seconds');
+}
 
 // ── Helper: render description with basic inline markdown ─────────
+
 function renderDescription(text: string) {
   return text.split('\n').map((line, i) => {
     const parts = line
@@ -24,58 +111,93 @@ function renderDescription(text: string) {
           return <em key={j}>{part.slice(1, -1)}</em>;
         return part;
       });
-    return (
-      <p key={i}>
-        {parts}
-      </p>
-    );
+    return <p key={i}>{parts}</p>;
   });
 }
 
-// ── Submission status badge ───────────────────────────────────────
-function StatusBadge({ status }: { status: MockSubmission['status'] }) {
-  const cls =
-    status === 'Accepted'
-      ? styles.statusAccepted
-      : status === 'Wrong Answer'
-      ? styles.statusWrongAnswer
-      : styles.statusTle;
-  const dot = status === 'TLE' ? '◐' : '●';
-  return (
-    <span className={`${styles.statusBadge} ${cls}`}>
-      {dot} {status}
-    </span>
-  );
-}
+const VERDICT_LABEL: Record<string, string> = {
+  Accepted:          'Accepted',
+  WrongAnswer:       'Wrong Answer',
+  RuntimeError:      'Runtime Error',
+  CompilationError:  'Compilation Error',
+  TimeLimitExceeded: 'Time Limit Exceeded',
+  MemoryLimitExceeded: 'Memory Limit Exceeded',
+  InternalError:     'Internal Error',
+};
 
-// ── Component ─────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function ChallengeDetail() {
   const { id } = useParams<{ id: string }>();
 
-  // Look up challenge from central mock data; fall back to first challenge
-  const challenge = (id ? mockChallenges.find(c => c.id === id) : null) ?? mockChallenges[0];
-  const submissions: MockSubmission[] = mockSubmissions[challenge.id] ?? [];
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [activeTab, setActiveTab] = useState<Tab>('problem');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitResult, setSubmitResult] = useState<
-    { status: SubmissionStatus; runtime: string } | null
-  >(null);
 
-  // Mock submit — picks a random result for demo purposes
-  const handleSubmit = () => {
-    setSubmitting(true);
-    setSubmitResult(null);
-    setTimeout(() => {
-      const outcomes: Array<{ status: SubmissionStatus; runtime: string }> = [
-        { status: 'Accepted',     runtime: '52 ms' },
-        { status: 'Wrong Answer', runtime: '—'     },
-        { status: 'Accepted',     runtime: '61 ms' },
-      ];
-      setSubmitResult(outcomes[Math.floor(Math.random() * outcomes.length)]);
-      setSubmitting(false);
-    }, 1200);
+  // Current editor state (tracked via onStateChange callback)
+  const currentLang = useRef<string>('javascript');
+  const currentCode = useRef<string>('');
+
+  const [submitState, setSubmitState] = useState<SubmitState>({ phase: 'idle' });
+
+  useEffect(() => {
+    apiFetch<ApiChallenge>(`/api/challenges/${id}`)
+      .then(data => setChallenge(fromApi(data)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleSubmit = async () => {
+    if (!id || submitState.phase === 'pending') return;
+    setSubmitState({ phase: 'pending' });
+
+    try {
+      const res = await apiFetch<{ id: number }>(`/api/challenges/${id}/submit`, {
+        method: 'POST',
+        body: JSON.stringify({
+          language: currentLang.current,
+          source_code: currentCode.current,
+        }),
+      });
+
+      const judged = await pollSubmission(res.id);
+
+      let results: ChallengeJudgeOutput | undefined;
+      if (judged.judge_output) {
+        try { results = JSON.parse(judged.judge_output); } catch { /* ignore */ }
+      }
+
+      setSubmitState({
+        phase: 'done',
+        submissionId: res.id,
+        verdict: judged.verdict,
+        results,
+      });
+    } catch (e: unknown) {
+      setSubmitState({
+        phase: 'error',
+        error: e instanceof Error ? e.message : 'Submission failed.',
+      });
+    }
   };
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.topBar} style={{ padding: '1rem 1.5rem', color: 'var(--text-muted, #888)' }}>
+        Loading…
+      </div>
+    </div>
+  );
+
+  if (error || !challenge) return (
+    <div className={styles.page}>
+      <div className={styles.topBar} style={{ padding: '1rem 1.5rem', color: 'var(--error, #f87171)' }}>
+        {error || 'Challenge not found.'}
+      </div>
+    </div>
+  );
 
   const diffBadge =
     challenge.difficulty === 'Easy'
@@ -84,11 +206,8 @@ export default function ChallengeDetail() {
       ? styles.badgeMedium
       : styles.badgeHard;
 
-  // Get studentId from localStorage if available
-  const storedUser = localStorage.getItem(LS.USER);
-  const studentId = storedUser
-    ? (JSON.parse(storedUser) as { name?: string }).name ?? 'student-001'
-    : 'student-001';
+  const visibleTestCases = challenge.testCases.filter(tc => !tc.hidden);
+  const hiddenCount = challenge.testCases.filter(tc => tc.hidden).length;
 
   return (
     <div className={styles.page}>
@@ -126,16 +245,15 @@ export default function ChallengeDetail() {
               onClick={() => setActiveTab('examples')}
             >
               Examples
-              <span className={styles.tabBadge}>{challenge.examples.length}</span>
+              {visibleTestCases.length > 0 && (
+                <span className={styles.tabBadge}>{visibleTestCases.length}</span>
+              )}
             </button>
             <button
               className={`${styles.tab} ${activeTab === 'submissions' ? styles.tabActive : ''}`}
               onClick={() => setActiveTab('submissions')}
             >
-              Submissions
-              {submissions.length > 0 && (
-                <span className={styles.tabBadge}>{submissions.length}</span>
-              )}
+              Results
             </button>
           </div>
 
@@ -162,88 +280,77 @@ export default function ChallengeDetail() {
                   </div>
                 </div>
 
-                <div className={styles.section}>
-                  <p className={styles.sectionTitle}>Input Format</p>
-                  <div className={styles.sectionBody}>
-                    {renderDescription(challenge.inputFormat)}
-                  </div>
-                </div>
-
-                <div className={styles.section}>
-                  <p className={styles.sectionTitle}>Output Format</p>
-                  <div className={styles.sectionBody}>
-                    {renderDescription(challenge.outputFormat)}
-                  </div>
-                </div>
-
-                <div className={styles.section}>
-                  <p className={styles.sectionTitle}>Constraints</p>
-                  <ul className={styles.constraintList}>
-                    {challenge.constraints.map((c, i) => (
-                      <li key={i} className={styles.constraintItem}>{c}</li>
-                    ))}
-                  </ul>
-                </div>
+                {hiddenCount > 0 && (
+                  <p className={styles.hiddenNote}>
+                    + {hiddenCount} hidden test case{hiddenCount !== 1 ? 's' : ''} used during grading
+                  </p>
+                )}
               </>
             )}
 
             {/* EXAMPLES TAB */}
             {activeTab === 'examples' && (
               <div className={styles.exampleList}>
-                {challenge.examples.map((ex, i) => (
-                  <div key={i} className={styles.exampleCard}>
-                    <div className={styles.exampleLabel}>Example {i + 1}</div>
-                    <div className={styles.exampleBody}>
-                      <div className={styles.ioRow}>
-                        <span className={styles.ioLabel}>Input</span>
-                        <pre className={styles.ioBlock}>{ex.input}</pre>
+                {visibleTestCases.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted, #888)', padding: '1rem 0' }}>
+                    No examples available for this challenge.
+                  </p>
+                ) : (
+                  visibleTestCases.map((tc, i) => (
+                    <div key={tc.id ?? i} className={styles.exampleCard}>
+                      <div className={styles.exampleLabel}>Example {i + 1}</div>
+                      <div className={styles.exampleBody}>
+                        <div className={styles.ioRow}>
+                          <span className={styles.ioLabel}>Input</span>
+                          <pre className={styles.ioBlock}>{tc.input}</pre>
+                        </div>
+                        <div className={styles.ioRow}>
+                          <span className={styles.ioLabel}>Output</span>
+                          <pre className={styles.ioBlock}>{tc.output ?? tc.expected ?? ''}</pre>
+                        </div>
                       </div>
-                      <div className={styles.ioRow}>
-                        <span className={styles.ioLabel}>Output</span>
-                        <pre className={styles.ioBlock}>{ex.output}</pre>
-                      </div>
-                      {ex.explanation && (
-                        <p className={styles.exampleExplanation}>
-                          <strong>Explanation: </strong>
-                          {ex.explanation}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
+                {hiddenCount > 0 && (
+                  <p className={styles.hiddenNote}>
+                    + {hiddenCount} hidden test case{hiddenCount !== 1 ? 's' : ''} used during grading
+                  </p>
+                )}
               </div>
             )}
 
-            {/* SUBMISSIONS TAB */}
+            {/* RESULTS TAB */}
             {activeTab === 'submissions' && (
               <div className={styles.submissionsWrap}>
-                {submissions.length === 0 ? (
+                {submitState.phase === 'idle' && (
                   <p className={styles.submissionsEmpty}>
-                    No submissions yet. Submit your first solution!
+                    Submit your solution to see results.
                   </p>
-                ) : (
-                  <table className={styles.submissionsTable}>
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Language</th>
-                        <th>Status</th>
-                        <th>Runtime</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {submissions.map((sub) => (
-                        <tr key={sub.id}>
-                          <td className={styles.tdDate}>{sub.date}</td>
-                          <td className={styles.tdLang}>{sub.language}</td>
-                          <td>
-                            <StatusBadge status={sub.status} />
-                          </td>
-                          <td className={styles.tdRuntime}>{sub.runtime}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                )}
+
+                {submitState.phase === 'pending' && (
+                  <p className={styles.submissionsEmpty}>
+                    Judging… please wait.
+                  </p>
+                )}
+
+                {submitState.phase === 'error' && (
+                  <p style={{ color: 'var(--error, #f87171)', padding: '1rem 0' }}>
+                    {submitState.error}
+                  </p>
+                )}
+
+                {submitState.phase === 'done' && submitState.results && (
+                  <SubmitResults verdict={submitState.verdict!} results={submitState.results} />
+                )}
+
+                {submitState.phase === 'done' && !submitState.results && (
+                  <div className={styles.resultSummary}>
+                    <span className={submitState.verdict === 'Accepted' ? styles.verdictOk : styles.verdictFail}>
+                      {VERDICT_LABEL[submitState.verdict!] ?? submitState.verdict}
+                    </span>
+                  </div>
                 )}
               </div>
             )}
@@ -254,62 +361,91 @@ export default function ChallengeDetail() {
         {/* ════════════ RIGHT PANEL ════════════ */}
         <div className={styles.rightPanel}>
           <div className={styles.editorWrap}>
-            <CodeEditor examId={challenge.id} studentId={studentId} />
+            <CodeEditor
+              onStateChange={(lang, code) => {
+                currentLang.current = lang;
+                currentCode.current = code;
+              }}
+            />
           </div>
-
-          {/* Submit bar */}
           <div className={styles.submitBar}>
-            <div>
-              {submitResult && (
-                <span
-                  className={`${styles.submitResult} ${
-                    submitResult.status === 'Accepted'
-                      ? styles.submitResultAccepted
-                      : styles.submitResultFailed
-                  }`}
-                >
-                  {submitResult.status === 'Accepted' ? '✓' : '✗'}{' '}
-                  {submitResult.status}
-                  {submitResult.runtime !== '—' && (
-                    <span className={styles.submitResultRuntime}>
-                      {' '}· {submitResult.runtime}
-                    </span>
-                  )}
-                </span>
-              )}
-            </div>
             <button
-              className={styles.btnSubmit}
+              className={`${styles.btnSubmit} ${submitState.phase === 'pending' ? styles.btnSubmitBusy : ''}`}
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitState.phase === 'pending'}
             >
-              {submitting ? (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={styles.spinning}>
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                  Submitting…
-                </>
-              ) : (
-                <>
-                  Submit Solution
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                    strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
-                  </svg>
-                </>
-              )}
+              {submitState.phase === 'pending' ? 'Judging…' : 'Submit'}
             </button>
+            {submitState.phase === 'done' && (
+              <button className={styles.btnViewResults} onClick={() => setActiveTab('submissions')}>
+                View Results
+              </button>
+            )}
           </div>
         </div>
 
       </div>
 
+    </div>
+  );
+}
+
+// ── Submit results panel ──────────────────────────────────────────────────────
+
+function SubmitResults({ verdict, results }: { verdict: string; results: ChallengeJudgeOutput }) {
+  const isAccepted = verdict === 'Accepted';
+
+  return (
+    <div className={styles.resultsWrap}>
+      <div className={styles.resultSummary}>
+        <span className={isAccepted ? styles.verdictOk : styles.verdictFail}>
+          {VERDICT_LABEL[verdict] ?? verdict}
+        </span>
+        <span className={styles.resultScore}>
+          {results.passed} / {results.total} tests passed
+        </span>
+      </div>
+
+      <div className={styles.testResultList}>
+        {results.test_cases.map((tc, i) => {
+          const pass = tc.verdict === 'Accepted';
+          return (
+            <div key={i} className={`${styles.testResult} ${pass ? styles.testResultPass : styles.testResultFail}`}>
+              <div className={styles.testResultHeader}>
+                <span className={styles.testResultIcon}>{pass ? '✓' : '✗'}</span>
+                <span className={styles.testResultLabel}>
+                  Test {i + 1}{tc.hidden ? ' (hidden)' : ''}
+                </span>
+                <span className={styles.testResultVerdict}>
+                  {VERDICT_LABEL[tc.verdict] ?? tc.verdict}
+                </span>
+                <span className={styles.testResultTime}>{tc.time_ms}ms</span>
+              </div>
+
+              {!tc.hidden && (
+                <div className={styles.testResultBody}>
+                  <div className={styles.testResultRow}>
+                    <span className={styles.testResultRowLabel}>Input</span>
+                    <pre className={styles.testResultPre}>{tc.input}</pre>
+                  </div>
+                  <div className={styles.testResultRow}>
+                    <span className={styles.testResultRowLabel}>Expected</span>
+                    <pre className={styles.testResultPre}>{tc.expected}</pre>
+                  </div>
+                  {tc.actual !== null && tc.actual !== undefined && (
+                    <div className={styles.testResultRow}>
+                      <span className={styles.testResultRowLabel}>Got</span>
+                      <pre className={`${styles.testResultPre} ${pass ? styles.testResultPreOk : styles.testResultPreFail}`}>
+                        {tc.actual}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

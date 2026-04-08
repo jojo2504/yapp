@@ -1,0 +1,504 @@
+/* ── Page ────────────────────────────────────────────────────────── */
+.page {
+  padding: 2.75rem 2.5rem 4rem;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 2.25rem;
+  border-bottom: 1px solid #1c1c28;
+}
+
+.headerLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7c3aed;
+  margin-bottom: 0.3rem;
+}
+
+.headerTitle {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.headerSub {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 0.35rem;
+}
+
+.btnCreate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.btnCreate:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+}
+
+/* ── Toolbar (search + filter) ───────────────────────────────────── */
+.toolbar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #475569;
+  pointer-events: none;
+  display: flex;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.65rem 1rem 0.65rem 2.5rem;
+  background: #111118;
+  border: 1px solid #1c1c28;
+  border-radius: 10px;
+  color: #f1f5f9;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.searchInput::placeholder { color: #334155; }
+.searchInput:focus {
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08);
+}
+
+.filterWrap {
+  position: relative;
+}
+
+.filterWrap::after {
+  content: '';
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #475569;
+  pointer-events: none;
+}
+
+.filterSelect {
+  padding: 0.65rem 2.2rem 0.65rem 1rem;
+  appearance: none;
+  background: #111118;
+  border: 1px solid #1c1c28;
+  border-radius: 10px;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filterSelect:focus { border-color: rgba(124, 58, 237, 0.45); }
+
+/* ── User list ───────────────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.empty {
+  padding: 3rem;
+  text-align: center;
+  background: #111118;
+  border: 1px dashed #1c1c28;
+  border-radius: 14px;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+/* ── User card ───────────────────────────────────────────────────── */
+.card {
+  background: #111118;
+  border: 1px solid #1c1c28;
+  border-radius: 14px;
+  padding: 1.125rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  transition: border-color 0.2s;
+}
+
+.card:hover { border-color: #2a2a38; }
+
+.card.banned { opacity: 0.6; }
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed22 0%, #2563eb22 100%);
+  border: 1px solid #2a2a38;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #a78bfa;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.cardMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.2rem;
+}
+
+.cardName {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: -0.01em;
+}
+
+.roleBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+}
+
+.roleBadge_Admin   { background: rgba(124,58,237,0.15); color: #a78bfa; }
+.roleBadge_Teacher { background: rgba(20,184,166,0.15); color: #2dd4bf; }
+.roleBadge_Student { background: rgba(59,130,246,0.15); color: #60a5fa; }
+
+.statusBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+}
+
+.statusBadge_active { background: rgba(16,185,129,0.12); color: #34d399; }
+.statusBadge_banned { background: rgba(239,68,68,0.12);  color: #f87171; }
+
+.cardEmail {
+  font-size: 0.8125rem;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardDate {
+  font-size: 0.75rem;
+  color: #334155;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Action buttons ──────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #1c1c28;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+
+.iconBtn:hover { color: #94a3b8; background: rgba(255,255,255,0.04); border-color: #2a2a38; }
+.iconBtn.edit:hover    { color: #a78bfa; background: rgba(124,58,237,0.08); border-color: rgba(124,58,237,0.3); }
+.iconBtn.pwd:hover     { color: #38bdf8; background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.3); }
+.iconBtn.ban:hover     { color: #fbbf24; background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.3); }
+.iconBtn.unban:hover   { color: #34d399; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); }
+.iconBtn.del:hover     { color: #f87171; background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.3);  }
+
+/* ── Modals ──────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 1rem;
+}
+
+.modal {
+  background: #111118;
+  border: 1px solid #1c1c28;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.75rem 2rem 1.5rem;
+  border-bottom: 1px solid #1c1c28;
+}
+
+.modalEyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7c3aed;
+  margin-bottom: 0.3rem;
+}
+
+.modalTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.02em;
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #1c1c28;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.18s, background 0.18s;
+}
+
+.closeBtn:hover { color: #f1f5f9; background: rgba(255,255,255,0.05); }
+
+.modalBody {
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 2rem;
+  border-top: 1px solid #1c1c28;
+}
+
+/* ── Modal form fields ───────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.input {
+  width: 100%;
+  padding: 0.72rem 1rem;
+  background: #0b0b0f;
+  border: 1px solid #1c1c28;
+  border-radius: 10px;
+  color: #f1f5f9;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input::placeholder { color: #2d3748; }
+.input:focus {
+  border-color: rgba(124,58,237,0.55);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+}
+
+.roleGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.roleBtn {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #1c1c28;
+  background: #0b0b0f;
+  color: #475569;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.roleBtn:hover { border-color: rgba(124,58,237,0.4); color: #a78bfa; background: rgba(124,58,237,0.06); }
+.roleBtnActive  { border-color: rgba(124,58,237,0.55); color: #a78bfa; background: rgba(124,58,237,0.12); }
+
+/* ── Banner ──────────────────────────────────────────────────────── */
+.errorBanner {
+  padding: 0.7rem 1rem;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 9px;
+  color: #f87171;
+  font-size: 0.875rem;
+}
+
+/* ── Modal buttons ───────────────────────────────────────────────── */
+.btnCancel {
+  padding: 0.65rem 1.3rem;
+  border-radius: 10px;
+  border: 1px solid #1c1c28;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+
+.btnCancel:hover { color: #94a3b8; background: rgba(255,255,255,0.04); border-color: #2a2a38; }
+
+.btnSave {
+  padding: 0.65rem 1.5rem;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.btnSave:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124,58,237,0.3);
+}
+
+.btnSave:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Confirm modal ───────────────────────────────────────────────── */
+.confirmText {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+.confirmName {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.btnDanger {
+  padding: 0.65rem 1.5rem;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.btnDanger:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+.btnDanger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .page { padding: 1.5rem 1rem 3rem; }
+  .header { flex-direction: column; gap: 1rem; }
+  .card { flex-wrap: wrap; }
+  .cardDate { display: none; }
+  .modal { border-radius: 16px 16px 0 0; align-self: flex-end; }
+  .overlay { align-items: flex-end; padding: 0; }
+  .modalHeader, .modalBody, .modalFooter { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .roleGroup { flex-direction: column; }
+}

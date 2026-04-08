@@ -1,39 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from '../Admin/ManageExams.module.css';
 import ExamModal from '../Admin/ExamModal';
-import type { Exam } from '../Admin/ManageExams';
-import { LS } from '../../constants/storage';
+import type { Exam, Question } from '../Admin/ManageExams';
+import { apiFetch } from '../../services/api';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── API mapping ───────────────────────────────────────────────────────────────
 
-type TeacherExam = Exam & { teacherId: string };
-
-// ── localStorage helpers ──────────────────────────────────────────────────────
-
-const LS_KEY = LS.T_EXAMS;
-
-function getTeacherId(): string {
-  try {
-    const raw = localStorage.getItem(LS.USER);
-    if (raw) return (JSON.parse(raw) as { teacherId?: string }).teacherId ?? '';
-  } catch { /* ignore */ }
-  return '';
+interface ApiExam {
+  id: number;
+  title: string;
+  duration_minutes: number;
+  start_datetime: string;
+  end_datetime: string;
+  student_count: number;
+  questions: unknown;
 }
 
-function load(): TeacherExam[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as TeacherExam[];
-  } catch { /* ignore */ }
-  return [];
+function fromApi(raw: ApiExam): Exam {
+  return {
+    id: String(raw.id),
+    title: raw.title ?? '',
+    durationMinutes: raw.duration_minutes ?? 60,
+    startDatetime: raw.start_datetime ?? '',
+    endDatetime: raw.end_datetime ?? '',
+    studentCount: raw.student_count ?? 0,
+    questions: Array.isArray(raw.questions) ? (raw.questions as Question[]) : [],
+  };
 }
 
-function persist(items: TeacherExam[]): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(items));
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+function toApi(e: Omit<Exam, 'id'>): object {
+  return {
+    title: e.title,
+    duration_minutes: e.durationMinutes,
+    start_datetime: e.startDatetime,
+    end_datetime: e.endDatetime,
+    student_count: e.studentCount,
+    questions: e.questions,
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -48,6 +51,7 @@ function examStatus(exam: Exam): 'upcoming' | 'active' | 'completed' {
 }
 
 function formatDatetime(dt: string) {
+  if (!dt) return '—';
   return new Date(dt).toLocaleString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -81,21 +85,6 @@ function IconTrash() {
     </svg>
   );
 }
-function IconShield() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-}
-function IconChevron({ open }: { open: boolean }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-      style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
 function IconClock() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -114,58 +103,76 @@ function IconUsers() {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const VIOLATION_COLORS: Record<string, string> = {
-  'Tab Switch':            styles.vtBlue,
-  'Copy-Paste':            styles.vtAmber,
-  'Full Screen Exit':      styles.vtOrange,
-  'Multiple Faces':        styles.vtRed,
-  'Screen Share Disabled': styles.vtPurple,
-};
-
 export default function TeacherExams() {
-  const teacherId = getTeacherId();
-  const [all, setAll]   = useState<TeacherExam[]>(load);
-  const mine             = all.filter(e => e.teacherId === teacherId);
-
-  const [modalOpen, setModalOpen]             = useState(false);
-  const [editing, setEditing]                 = useState<Exam | null>(null);
+  const [exams, setExams]     = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [modalOpen, setModalOpen]   = useState(false);
+  const [editing, setEditing]       = useState<Exam | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [violationsOpenId, setViolationsOpenId] = useState<string | null>(null);
 
-  function update(updated: TeacherExam[]) {
-    setAll(updated);
-    persist(updated);
+  function loadExams() {
+    setLoading(true);
+    apiFetch<ApiExam[]>('/api/exams')
+      .then(data => setExams(data.map(fromApi)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }
+
+  useEffect(() => { loadExams(); }, []);
 
   function openCreate() { setEditing(null); setModalOpen(true); }
   function openEdit(e: Exam) { setEditing(e); setModalOpen(true); }
 
-  function handleSave(data: Omit<Exam, 'id' | 'violations'>) {
-    if (editing) {
-      update(all.map(e =>
-        e.id === editing.id
-          ? { ...data, id: e.id, violations: e.violations, teacherId: e.teacherId }
-          : e
-      ));
-    } else {
-      update([...all, { ...data, id: generateId(), violations: [], teacherId }]);
-    }
+  async function handleSave(data: Omit<Exam, 'id'>) {
+    const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);
+    setError('');
+    try {
+      if (currentEditing) {
+        const updated = await apiFetch<ApiExam>(`/api/exams/${currentEditing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(toApi(data)),
+        });
+        setExams(prev => prev.map(e => e.id === currentEditing.id ? fromApi(updated) : e));
+      } else {
+        const created = await apiFetch<ApiExam>('/api/exams', {
+          method: 'POST',
+          body: JSON.stringify(toApi(data)),
+        });
+        setExams(prev => [...prev, fromApi(created)]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save exam.');
+      loadExams();
+    }
   }
 
-  function handleDelete(id: string) {
-    update(all.filter(e => e.id !== id));
+  async function handleDelete(id: string) {
     setConfirmDeleteId(null);
-    if (violationsOpenId === id) setViolationsOpenId(null);
+    try {
+      await apiFetch(`/api/exams/${id}`, { method: 'DELETE' });
+      setExams(prev => prev.filter(e => e.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete exam.');
+    }
   }
 
   const STATUS_LABEL = { upcoming: 'Upcoming', active: 'Active', completed: 'Completed' };
-  const STATUS_CLASS  = {
-    upcoming:  styles.statusUpcoming,
-    active:    styles.statusActive,
-    completed: styles.statusCompleted,
-  };
+  const STATUS_CLASS = { upcoming: styles.statusUpcoming, active: styles.statusActive, completed: styles.statusCompleted };
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <p className={styles.headerLabel}>Teacher</p>
+          <h1 className={styles.headerTitle}>My Exams</h1>
+        </div>
+      </div>
+      <div className={styles.list} style={{ padding: '2rem', color: 'var(--text-muted, #888)' }}>Loading…</div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -175,22 +182,23 @@ export default function TeacherExams() {
         <div>
           <p className={styles.headerLabel}>Teacher</p>
           <h1 className={styles.headerTitle}>My Exams</h1>
-          <p className={styles.headerSub}>{mine.length} exam{mine.length !== 1 ? 's' : ''}</p>
+          <p className={styles.headerSub}>{exams.length} exam{exams.length !== 1 ? 's' : ''}</p>
         </div>
         <button className={styles.btnCreate} onClick={openCreate}>
           <IconPlus /> Create Exam
         </button>
       </div>
 
+      {error && <p style={{ color: 'var(--error, #f87171)', padding: '0 0 1rem' }}>{error}</p>}
+
       {/* ── Exam list ── */}
       <div className={styles.list}>
-        {mine.length === 0 && (
+        {exams.length === 0 && (
           <div className={styles.empty}>No exams yet. Create your first one.</div>
         )}
 
-        {mine.map(exam => {
+        {exams.map(exam => {
           const status   = examStatus(exam);
-          const vOpen    = violationsOpenId === exam.id;
           const mcqCount = exam.questions.filter(q => q.type === 'multiple-choice').length;
           const codCount = exam.questions.filter(q => q.type === 'coding').length;
 
@@ -222,24 +230,16 @@ export default function TeacherExams() {
                     <span className={styles.statPill}>
                       <IconUsers /> {exam.studentCount} students
                     </span>
-                    {mcqCount > 0 && <span className={styles.statPill}>{mcqCount} MCQ</span>}
-                    {codCount > 0 && <span className={styles.statPill}>{codCount} coding</span>}
+                    {mcqCount > 0 && (
+                      <span className={styles.statPill}>{mcqCount} MCQ</span>
+                    )}
+                    {codCount > 0 && (
+                      <span className={styles.statPill}>{codCount} coding</span>
+                    )}
                   </div>
                 </div>
 
                 <div className={styles.cardActions}>
-                  <button
-                    className={`${styles.btnViolations} ${vOpen ? styles.btnViolationsOpen : ''}`}
-                    onClick={() => setViolationsOpenId(vOpen ? null : exam.id)}
-                  >
-                    <IconShield />
-                    Violations
-                    {exam.violations.length > 0 && (
-                      <span className={styles.violationCount}>{exam.violations.length}</span>
-                    )}
-                    <IconChevron open={vOpen} />
-                  </button>
-
                   {confirmDeleteId === exam.id ? (
                     <div className={styles.confirmDelete}>
                       <span className={styles.confirmText}>Delete?</span>
@@ -259,48 +259,6 @@ export default function TeacherExams() {
                 </div>
               </div>
 
-              {/* ── Violations accordion ── */}
-              {vOpen && (
-                <div className={styles.violationsSection}>
-                  <div className={styles.violationsSectionHeader}>
-                    <span className={styles.violationsSectionTitle}>Student Violations</span>
-                    <span className={styles.violationsSectionCount}>
-                      {exam.violations.length} record{exam.violations.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-
-                  {exam.violations.length === 0 ? (
-                    <p className={styles.noViolations}>No violations recorded for this exam.</p>
-                  ) : (
-                    <div className={styles.tableWrap}>
-                      <table className={styles.table}>
-                        <thead>
-                          <tr>
-                            <th>Student Name</th>
-                            <th>Violation Type</th>
-                            <th>Duration</th>
-                            <th>Timestamp</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {exam.violations.map(v => (
-                            <tr key={v.id}>
-                              <td className={styles.tdName}>{v.studentName}</td>
-                              <td>
-                                <span className={`${styles.violationTypeBadge} ${VIOLATION_COLORS[v.violationType] ?? styles.vtBlue}`}>
-                                  {v.violationType}
-                                </span>
-                              </td>
-                              <td className={styles.tdMono}>{v.duration}</td>
-                              <td className={styles.tdMono}>{v.timestamp}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           );
         })}

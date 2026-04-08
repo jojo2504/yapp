@@ -21,5 +21,8 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 		// Protected routes
 		auth.GET("/me", middleware.JWTAuth(), handler.GetMe)
 		auth.POST("/logout", middleware.JWTAuth(), handler.Logout)
+
+		// Admin-only: create any user (including other admins)
+		auth.POST("/admin/register", middleware.JWTAuth(), middleware.RequireRole("Admin"), handler.AdminCreateUser)
 	}
 }

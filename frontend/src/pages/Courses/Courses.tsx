@@ -1,24 +1,39 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Courses.module.css';
-import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ApiCourse {
+  id: number;
+  name: string;
+  description: string;
+  challenge_ids: number[];
+  group_ids: number[];
+}
 
 interface Course {
   id: string;
-  title: string;
+  name: string;
   description: string;
   thumbnail: string;
   challengeIds: string[];
   groupIds: string[];
 }
 
-function loadCourses(): Course[] {
-  try {
-    const raw = localStorage.getItem(LS.A_COURSES);
-    if (raw) return JSON.parse(raw) as Course[];
-  } catch { /* ignore */ }
-  return [];
+function fromApi(raw: ApiCourse): Course {
+  return {
+    id: String(raw.id),
+    name: raw.name ?? '',
+    description: raw.description ?? '',
+    thumbnail: '',
+    challengeIds: (raw.challenge_ids ?? []).map(String),
+    groupIds: (raw.group_ids ?? []).map(String),
+  };
 }
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 function IconBook() {
   return (
@@ -55,8 +70,35 @@ function IconArrow() {
   );
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function Courses() {
-  const courses = useMemo(loadCourses, []);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    apiFetch<ApiCourse[]>('/api/courses')
+      .then(data => setCourses(data.map(fromApi)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.container} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted, #888)' }}>
+        Loading courses…
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className={styles.page}>
+      <div className={styles.container} style={{ padding: '2rem', color: 'var(--error, #f87171)' }}>
+        Error: {error}
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -85,7 +127,7 @@ export default function Courses() {
                 {course.thumbnail ? (
                   <img
                     src={course.thumbnail}
-                    alt={course.title}
+                    alt={course.name}
                     className={styles.thumbnailImg}
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
@@ -97,7 +139,7 @@ export default function Courses() {
               </div>
 
               <div className={styles.cardBody}>
-                <h3 className={styles.cardTitle}>{course.title}</h3>
+                <h3 className={styles.cardTitle}>{course.name}</h3>
                 {course.description && (
                   <p className={styles.cardDesc}>{course.description}</p>
                 )}

@@ -5,6 +5,15 @@ import (
 	"backend/api/types/problem"
 )
 
+// InlineTestCase carries a single test case embedded in the Redis submission
+// message for challenge submissions. Not stored in the DB (gorm:"-").
+type InlineTestCase struct {
+	Input    string `json:"input"`
+	Expected string `json:"expected"`
+	Hidden   bool   `json:"hidden"`
+	Position int    `json:"position"`
+}
+
 type Submission struct {
 	base.BaseModel
 
@@ -12,6 +21,9 @@ type Submission struct {
 	ProblemID  int64            `json:"problem_id" gorm:"not null;index;index:idx_user_problem"`
 	Language   problem.Language `json:"language" gorm:"size:50;not null"`
 	SourceCode string           `json:"source_code" gorm:"type:text;not null"`
+
+	// ChallengeID links to a challenge (nil for problem/playground runs).
+	ChallengeID *int64 `json:"challenge_id,omitempty" gorm:"index"`
 
 	// Résultat du jugement
 	Verdict Verdict `json:"verdict" gorm:"size:50;default:Pending;index"`
@@ -24,8 +36,15 @@ type Submission struct {
 	// Output brut du juge
 	JudgeOutput *string `json:"judge_output,omitempty" gorm:"type:text"`
 
+	// Stdin for playground runs (problem_id == 0). Not used for scored submissions.
+	Stdin *string `json:"stdin,omitempty" gorm:"type:text"`
+
 	// Set to true when the submission was made during a timed exam.
 	IsExamSubmission bool `json:"is_exam_submission" gorm:"default:false"`
+
+	// InlineTestCases is populated for challenge submissions and embedded in the
+	// Redis message so the judge can run without querying the DB. Not persisted.
+	InlineTestCases []InlineTestCase `json:"inline_test_cases,omitempty" gorm:"-"`
 
 	// Relations
 	TestResults []TestCaseResult `json:"test_results,omitempty" gorm:"foreignKey:SubmissionID"`

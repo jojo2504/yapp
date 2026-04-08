@@ -1,39 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from '../Admin/ManageChallenges.module.css';
 import ChallengeModal from '../Admin/ChallengeModal';
-import type { Challenge } from '../Admin/ManageChallenges';
-import { LS } from '../../constants/storage';
+import type { Challenge, StarterCode, TestCase } from '../Admin/ManageChallenges';
+import { apiFetch } from '../../services/api';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── API mapping ───────────────────────────────────────────────────────────────
 
-type TeacherChallenge = Challenge & { teacherId: string };
-
-// ── localStorage helpers ──────────────────────────────────────────────────────
-
-const LS_KEY = LS.T_CHALLENGES;
-
-function getTeacherId(): string {
-  try {
-    const raw = localStorage.getItem(LS.USER);
-    if (raw) return (JSON.parse(raw) as { teacherId?: string }).teacherId ?? '';
-  } catch { /* ignore */ }
-  return '';
+interface ApiChallenge {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  category: string;
+  starter_code: unknown;
+  test_cases: unknown;
 }
 
-function load(): TeacherChallenge[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as TeacherChallenge[];
-  } catch { /* ignore */ }
-  return [];
+const EMPTY_STARTER: StarterCode = {
+  javascript: 'function solution() {\n  // Your code here\n}',
+  python:     'def solution():\n    # Your code here\n    pass',
+  cpp:        '#include <bits/stdc++.h>\nusing namespace std;\n\nvoid solution() {\n    // Your code here\n}',
+  java:       'class Solution {\n    public void solution() {\n        // Your code here\n    }\n}',
+};
+
+function fromApi(raw: ApiChallenge): Challenge {
+  return {
+    id: String(raw.id),
+    title: raw.title ?? '',
+    description: raw.description ?? '',
+    difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Challenge['difficulty'],
+    category: (raw.category ?? 'Arrays') as Challenge['category'],
+    starterCode: (raw.starter_code as StarterCode) ?? EMPTY_STARTER,
+    testCases: Array.isArray(raw.test_cases)
+      ? (raw.test_cases as Array<{ id?: string; input: string; output: string; hidden?: boolean }>).map((tc, i) => ({
+          id: tc.id ?? String(i),
+          input: tc.input ?? '',
+          output: tc.output ?? '',
+          hidden: tc.hidden ?? false,
+        }))
+      : [],
+  };
 }
 
-function persist(items: TeacherChallenge[]): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(items));
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+function toApi(c: Omit<Challenge, 'id'>): object {
+  return {
+    title: c.title,
+    description: c.description,
+    difficulty: c.difficulty,
+    category: c.category,
+    starter_code: c.starterCode,
+    test_cases: c.testCases,
+  };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -69,44 +86,78 @@ function IconTrash() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TeacherChallenges() {
-  const teacherId = getTeacherId();
-  const [all, setAll]   = useState<TeacherChallenge[]>(load);
-  const mine            = all.filter(c => c.teacherId === teacherId);
-
-  const [modalOpen, setModalOpen]           = useState(false);
-  const [editing, setEditing]               = useState<Challenge | null>(null);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [modalOpen, setModalOpen]   = useState(false);
+  const [editing, setEditing]       = useState<Challenge | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  function update(updated: TeacherChallenge[]) {
-    setAll(updated);
-    persist(updated);
+  function loadChallenges() {
+    setLoading(true);
+    apiFetch<ApiChallenge[]>('/api/challenges')
+      .then(data => setChallenges(data.map(fromApi)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }
+
+  useEffect(() => { loadChallenges(); }, []);
 
   function openCreate() { setEditing(null); setModalOpen(true); }
-  function openEdit(c: TeacherChallenge) { setEditing(c); setModalOpen(true); }
+  function openEdit(c: Challenge) { setEditing(c); setModalOpen(true); }
 
-  function handleSave(data: Omit<Challenge, 'id'>) {
-    if (editing) {
-      update(all.map(c =>
-        c.id === editing.id ? { ...data, id: c.id, teacherId: c.teacherId } : c
-      ));
-    } else {
-      update([...all, { ...data, id: generateId(), teacherId }]);
-    }
+  async function handleSave(data: Omit<Challenge, 'id'>) {
+    const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);
+    setError('');
+    try {
+      if (currentEditing) {
+        const updated = await apiFetch<ApiChallenge>(`/api/challenges/${currentEditing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(toApi(data)),
+        });
+        setChallenges(prev => prev.map(c => c.id === currentEditing.id ? fromApi(updated) : c));
+      } else {
+        const created = await apiFetch<ApiChallenge>('/api/challenges', {
+          method: 'POST',
+          body: JSON.stringify(toApi(data)),
+        });
+        setChallenges(prev => [...prev, fromApi(created)]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save challenge.');
+      loadChallenges();
+    }
   }
 
-  function handleDelete(id: string) {
-    update(all.filter(c => c.id !== id));
+  async function handleDelete(id: string) {
     setConfirmDeleteId(null);
+    try {
+      await apiFetch(`/api/challenges/${id}`, { method: 'DELETE' });
+      setChallenges(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete challenge.');
+    }
   }
 
-  const DIFF_CLASS: Record<string, string> = {
+  const DIFF_CLASS: Record<Challenge['difficulty'], string> = {
     Easy:   styles.badgeEasy,
     Medium: styles.badgeMedium,
     Hard:   styles.badgeHard,
   };
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <p className={styles.headerLabel}>Teacher</p>
+          <h1 className={styles.headerTitle}>My Challenges</h1>
+        </div>
+      </div>
+      <div className={styles.list} style={{ padding: '2rem', color: 'var(--text-muted, #888)' }}>Loading…</div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -116,20 +167,22 @@ export default function TeacherChallenges() {
         <div>
           <p className={styles.headerLabel}>Teacher</p>
           <h1 className={styles.headerTitle}>My Challenges</h1>
-          <p className={styles.headerSub}>{mine.length} challenge{mine.length !== 1 ? 's' : ''}</p>
+          <p className={styles.headerSub}>{challenges.length} challenge{challenges.length !== 1 ? 's' : ''}</p>
         </div>
         <button className={styles.btnCreate} onClick={openCreate}>
           <IconPlus /> Create Challenge
         </button>
       </div>
 
+      {error && <p style={{ color: 'var(--error, #f87171)', padding: '0 0 1rem' }}>{error}</p>}
+
       {/* ── Challenge list ── */}
       <div className={styles.list}>
-        {mine.length === 0 && (
+        {challenges.length === 0 && (
           <div className={styles.empty}>No challenges yet. Create your first one.</div>
         )}
 
-        {mine.map(c => (
+        {challenges.map(c => (
           <div key={c.id} className={styles.card}>
             <div className={styles.cardMain}>
               <div className={styles.cardTop}>

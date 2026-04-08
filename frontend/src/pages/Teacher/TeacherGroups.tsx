@@ -1,39 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from '../Admin/ManageGroups.module.css';
 import GroupModal from '../Admin/GroupModal';
 import type { Group } from '../Admin/ManageGroups';
-import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── API mapping ───────────────────────────────────────────────────────────────
 
-type TeacherGroup = Group & { teacherId: string };
-
-// ── localStorage helpers ──────────────────────────────────────────────────────
-
-const LS_KEY = LS.T_GROUPS;
-
-function getTeacherId(): string {
-  try {
-    const raw = localStorage.getItem(LS.USER);
-    if (raw) return (JSON.parse(raw) as { teacherId?: string }).teacherId ?? '';
-  } catch { /* ignore */ }
-  return '';
+interface ApiGroup {
+  id: number;
+  name: string;
+  students: string[];
+  course_ids: number[];
 }
 
-function load(): TeacherGroup[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as TeacherGroup[];
-  } catch { /* ignore */ }
-  return [];
+function fromApi(raw: ApiGroup): Group {
+  return {
+    id: String(raw.id),
+    name: raw.name ?? '',
+    studentEmails: raw.students ?? [],
+    courseIds: (raw.course_ids ?? []).map(String),
+  };
 }
 
-function persist(items: TeacherGroup[]): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(items));
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+function toApi(g: Omit<Group, 'id'>): object {
+  return {
+    name: g.name,
+    students: g.studentEmails,
+    course_ids: g.courseIds.map(Number),
+  };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -83,38 +77,72 @@ function IconBook() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TeacherGroups() {
-  const teacherId = getTeacherId();
-  const [all, setAll]   = useState<TeacherGroup[]>(load);
-  const mine             = all.filter(g => g.teacherId === teacherId);
-
-  const [modalOpen, setModalOpen]             = useState(false);
-  const [editing, setEditing]                 = useState<Group | null>(null);
+  const [groups, setGroups]   = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing]     = useState<Group | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  function update(updated: TeacherGroup[]) {
-    setAll(updated);
-    persist(updated);
+  function loadGroups() {
+    setLoading(true);
+    apiFetch<ApiGroup[]>('/api/groups')
+      .then(data => setGroups(data.map(fromApi)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }
+
+  useEffect(() => { loadGroups(); }, []);
 
   function openCreate() { setEditing(null); setModalOpen(true); }
-  function openEdit(g: TeacherGroup) { setEditing(g); setModalOpen(true); }
+  function openEdit(g: Group) { setEditing(g); setModalOpen(true); }
 
-  function handleSave(data: Omit<Group, 'id'>) {
-    if (editing) {
-      update(all.map(g =>
-        g.id === editing.id ? { ...data, id: g.id, teacherId: g.teacherId } : g
-      ));
-    } else {
-      update([...all, { ...data, id: generateId(), teacherId }]);
-    }
+  async function handleSave(data: Omit<Group, 'id'>) {
+    const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);
+    setError('');
+    try {
+      if (currentEditing) {
+        const updated = await apiFetch<ApiGroup>(`/api/groups/${currentEditing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(toApi(data)),
+        });
+        setGroups(prev => prev.map(g => g.id === currentEditing.id ? fromApi(updated) : g));
+      } else {
+        const created = await apiFetch<ApiGroup>('/api/groups', {
+          method: 'POST',
+          body: JSON.stringify(toApi(data)),
+        });
+        setGroups(prev => [...prev, fromApi(created)]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save group.');
+      loadGroups();
+    }
   }
 
-  function handleDelete(id: string) {
-    update(all.filter(g => g.id !== id));
+  async function handleDelete(id: string) {
     setConfirmDeleteId(null);
+    try {
+      await apiFetch(`/api/groups/${id}`, { method: 'DELETE' });
+      setGroups(prev => prev.filter(g => g.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete group.');
+    }
   }
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <p className={styles.headerLabel}>Teacher</p>
+          <h1 className={styles.headerTitle}>My Groups</h1>
+        </div>
+      </div>
+      <div className={styles.list} style={{ padding: '2rem', color: 'var(--text-muted, #888)' }}>Loading…</div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -124,20 +152,22 @@ export default function TeacherGroups() {
         <div>
           <p className={styles.headerLabel}>Teacher</p>
           <h1 className={styles.headerTitle}>My Groups</h1>
-          <p className={styles.headerSub}>{mine.length} group{mine.length !== 1 ? 's' : ''}</p>
+          <p className={styles.headerSub}>{groups.length} group{groups.length !== 1 ? 's' : ''}</p>
         </div>
         <button className={styles.btnCreate} onClick={openCreate}>
           <IconPlus /> Create New Group
         </button>
       </div>
 
+      {error && <p style={{ color: 'var(--error, #f87171)', padding: '0 0 1rem' }}>{error}</p>}
+
       {/* ── Group list ── */}
       <div className={styles.list}>
-        {mine.length === 0 && (
+        {groups.length === 0 && (
           <div className={styles.empty}>No groups yet. Create your first one.</div>
         )}
 
-        {mine.map(group => (
+        {groups.map(group => (
           <div key={group.id} className={styles.card}>
 
             {/* Content */}

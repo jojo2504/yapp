@@ -10,7 +10,7 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ExamForm = Omit<Exam, 'id' | 'violations' | 'studentCount'>;
+type ExamForm = Omit<Exam, 'id' | 'studentCount'>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -179,7 +179,7 @@ function CodingEditor({ q, index, onChange, onRemove }: CodingEditorProps) {
 interface Props {
   initial: Exam | null;
   onClose: () => void;
-  onSave: (data: Omit<Exam, 'id' | 'violations'>) => void;
+  onSave: (data: Omit<Exam, 'id'>) => void;
 }
 
 export default function ExamModal({ initial, onClose, onSave }: Props) {

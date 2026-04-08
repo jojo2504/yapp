@@ -21,7 +21,15 @@ type RegisterRequest struct {
 	Name           string `json:"name" binding:"required,min=2,max=100"`
 	Email          string `json:"email" binding:"required,email"`
 	Password       string `json:"password" binding:"required,min=8"`
-	OrganisationID int64  `json:"organisation_id" binding:"required"`
+	OrganisationID int64  `json:"organisation_id"`
+}
+
+type AdminCreateUserRequest struct {
+	Name           string `json:"name" binding:"required,min=2,max=100"`
+	Email          string `json:"email" binding:"required,email"`
+	Password       string `json:"password" binding:"required,min=8"`
+	Role           string `json:"role" binding:"required"`
+	OrganisationID int64  `json:"organisation_id"`
 }
 
 type LoginRequest struct {
@@ -80,10 +88,15 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 		return nil, errors.New("email already registered")
 	}
 
-	// Check if organisation exists
-	var org organisation.Organisation
-	if err := s.db.First(&org, req.OrganisationID).Error; err != nil {
-		return nil, errors.New("organisation not found")
+	// Check if organisation exists (optional)
+	var orgIDPtr *int64
+	if req.OrganisationID != 0 {
+		var org organisation.Organisation
+		if err := s.db.First(&org, req.OrganisationID).Error; err != nil {
+			return nil, errors.New("organisation not found")
+		}
+		orgID := req.OrganisationID
+		orgIDPtr = &orgID
 	}
 
 	// Hash password
@@ -93,7 +106,6 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 	}
 
 	// Create user with existing type
-	orgID := req.OrganisationID
 	hashedStr := string(hashedPassword)
 	newUser := user.User{
 		BaseModel: base.BaseModel{
@@ -104,7 +116,7 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 		Email:          req.Email,
 		PasswordHash:   &hashedStr,
 		Role:           user.RoleStudent,
-		OrganisationID: &orgID,
+		OrganisationID: orgIDPtr,
 		IsActive:       true,
 		EmailVerified:  false,
 	}
@@ -117,6 +129,55 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 	return s.generateAuthResponse(&newUser)
 }
 
+// CreateUserAsAdmin creates a user with any role — caller must already be verified as Admin at the route level
+func (s *Service) CreateUserAsAdmin(req AdminCreateUserRequest) (*AuthResponse, error) {
+	role := user.Role(req.Role)
+	if !role.IsValid() {
+		return nil, errors.New("invalid role: must be Student, Teacher, or Admin")
+	}
+
+	var existingUser user.User
+	if err := s.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		return nil, errors.New("email already registered")
+	}
+
+	var orgIDPtr *int64
+	if req.OrganisationID != 0 {
+		var org organisation.Organisation
+		if err := s.db.First(&org, req.OrganisationID).Error; err != nil {
+			return nil, errors.New("organisation not found")
+		}
+		orgID := req.OrganisationID
+		orgIDPtr = &orgID
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
+	if err != nil {
+		return nil, errors.New("failed to hash password")
+	}
+
+	hashedStr := string(hashedPassword)
+	newUser := user.User{
+		BaseModel: base.BaseModel{
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		Name:           req.Name,
+		Email:          req.Email,
+		PasswordHash:   &hashedStr,
+		Role:           role,
+		OrganisationID: orgIDPtr,
+		IsActive:       true,
+		EmailVerified:  true,
+	}
+
+	if err := s.db.Create(&newUser).Error; err != nil {
+		return nil, errors.New("failed to create user")
+	}
+
+	return s.generateAuthResponse(&newUser)
+}
+
 // Login authenticates a user
 func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 	var u user.User
@@ -126,6 +187,10 @@ func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 
 	if !u.IsActive {
 		return nil, errors.New("account is deactivated")
+	}
+
+	if u.PasswordHash == nil {
+		return nil, errors.New("invalid email or password")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*u.PasswordHash), []byte(req.Password)); err != nil {
@@ -221,7 +286,9 @@ func (s *Service) generateAuthResponse(u *user.User) (*AuthResponse, error) {
 		Token:     refreshToken,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 	}
-	s.db.Create(&sess)
+	if err := s.db.Create(&sess).Error; err != nil {
+		return nil, errors.New("failed to save session")
+	}
 
 	return &AuthResponse{
 		User: UserResponse{

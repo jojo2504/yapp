@@ -140,3 +140,12 @@
   color: #1e293b;
   font-style: italic;
 }
+
+.outputError {
+  color: #f87171;
+}
+
+.outputOk {
+  color: #4ade80;
+  font-weight: 700;
+}

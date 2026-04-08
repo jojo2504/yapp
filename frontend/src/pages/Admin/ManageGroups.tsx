@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import styles from './ManageGroups.module.css';
 import GroupModal from './GroupModal';
-import { mockGroups, mockCourses } from '../../mock/data';
-import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -13,14 +12,30 @@ export interface Group {
   courseIds: string[];
 }
 
-// ── Lookup maps derived from mock data ────────────────────────────────────────
+// ── API mapping ───────────────────────────────────────────────────────────────
 
-const COURSE_TITLES: Record<string, string> = Object.fromEntries(
-  mockCourses.map(c => [c.id, c.title])
-);
+interface ApiGroup {
+  id: number;
+  name: string;
+  students: string[];
+  course_ids: number[];
+}
 
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+function fromApi(raw: ApiGroup): Group {
+  return {
+    id: String(raw.id),
+    name: raw.name ?? '',
+    studentEmails: raw.students ?? [],
+    courseIds: (raw.course_ids ?? []).map(String),
+  };
+}
+
+function toApi(g: Omit<Group, 'id'>): object {
+  return {
+    name: g.name,
+    students: g.studentEmails,
+    course_ids: g.courseIds.map(Number),
+  };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -70,41 +85,72 @@ function IconBook() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ManageGroups() {
-  const [groups, setGroups] = useState<Group[]>(() => {
-    try {
-      const raw = localStorage.getItem(LS.A_GROUPS);
-      if (raw) return JSON.parse(raw) as Group[];
-    } catch { /* ignore */ }
-    return mockGroups;
-  });
+  const [groups, setGroups]   = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing]     = useState<Group | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem(LS.A_GROUPS, JSON.stringify(groups));
-  }, [groups]);
+  function loadGroups() {
+    setLoading(true);
+    apiFetch<ApiGroup[]>('/api/groups')
+      .then(data => setGroups(data.map(fromApi)))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { loadGroups(); }, []);
 
   function openCreate() { setEditing(null); setModalOpen(true); }
   function openEdit(g: Group) { setEditing(g); setModalOpen(true); }
 
-  function handleSave(data: Omit<Group, 'id'>) {
-    if (editing) {
-      setGroups(prev => prev.map(g =>
-        g.id === editing.id ? { ...data, id: g.id } : g
-      ));
-    } else {
-      setGroups(prev => [...prev, { ...data, id: generateId() }]);
-    }
+  async function handleSave(data: Omit<Group, 'id'>) {
+    const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);
+    setError('');
+    try {
+      if (currentEditing) {
+        const updated = await apiFetch<ApiGroup>(`/api/groups/${currentEditing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(toApi(data)),
+        });
+        setGroups(prev => prev.map(g => g.id === currentEditing.id ? fromApi(updated) : g));
+      } else {
+        const created = await apiFetch<ApiGroup>('/api/groups', {
+          method: 'POST',
+          body: JSON.stringify(toApi(data)),
+        });
+        setGroups(prev => [...prev, fromApi(created)]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save group.');
+      loadGroups();
+    }
   }
 
   async function handleDelete(id: string) {
-    try { await fetch(`/api/groups/${id}`, { method: 'DELETE' }); } catch { /* optimistic */ }
-    setGroups(prev => prev.filter(g => g.id !== id));
     setConfirmDeleteId(null);
+    try {
+      await apiFetch(`/api/groups/${id}`, { method: 'DELETE' });
+      setGroups(prev => prev.filter(g => g.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete group.');
+    }
   }
+
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <p className={styles.headerLabel}>Admin</p>
+          <h1 className={styles.headerTitle}>Groups</h1>
+        </div>
+      </div>
+      <div className={styles.list} style={{ padding: '2rem', color: 'var(--text-muted, #888)' }}>Loading…</div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -120,6 +166,8 @@ export default function ManageGroups() {
           <IconPlus /> Create New Group
         </button>
       </div>
+
+      {error && <p style={{ color: 'var(--error, #f87171)', padding: '0 0 1rem' }}>{error}</p>}
 
       {/* ── Group list ── */}
       <div className={styles.list}>
@@ -147,7 +195,7 @@ export default function ManageGroups() {
                 <div className={styles.coursePreview}>
                   {group.courseIds.slice(0, 3).map(cid => (
                     <span key={cid} className={styles.courseChip}>
-                      {COURSE_TITLES[cid] ?? `Course ${cid}`}
+                      Course {cid}
                     </span>
                   ))}
                   {group.courseIds.length > 3 && (

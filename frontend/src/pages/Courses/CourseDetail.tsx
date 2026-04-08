@@ -1,15 +1,30 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styles from './CourseDetail.module.css';
-import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ApiCourse {
+  id: number;
+  name: string;
+  description: string;
+  challenge_ids: number[];
+  group_ids: number[];
+}
+
+interface ApiChallenge {
+  id: number;
+  title: string;
+  difficulty: string;
+}
 
 interface Course {
   id: string;
-  title: string;
+  name: string;
   description: string;
   thumbnail: string;
   challengeIds: string[];
-  groupIds: string[];
 }
 
 interface Challenge {
@@ -18,21 +33,7 @@ interface Challenge {
   difficulty: 'Easy' | 'Medium' | 'Hard';
 }
 
-function loadCourses(): Course[] {
-  try {
-    const raw = localStorage.getItem(LS.A_COURSES);
-    if (raw) return JSON.parse(raw) as Course[];
-  } catch { /* ignore */ }
-  return [];
-}
-
-function loadChallenges(): Challenge[] {
-  try {
-    const raw = localStorage.getItem(LS.A_CHALLENGES);
-    if (raw) return JSON.parse(raw) as Challenge[];
-  } catch { /* ignore */ }
-  return [];
-}
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 function IconBook() {
   return (
@@ -59,11 +60,47 @@ function IconChevronLeft() {
   );
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
 
-  const course = useMemo(() => loadCourses().find(c => c.id === id) ?? null, [id]);
-  const allChallenges = useMemo(loadChallenges, []);
+  const [course, setCourse]         = useState<Course | null>(null);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch<ApiCourse>(`/api/courses/${id}`),
+      apiFetch<ApiChallenge[]>('/api/challenges'),
+    ])
+      .then(([found, challengesData]) => {
+        const mapped: Course = {
+          id: String(found.id),
+          name: found.name ?? '',
+          description: found.description ?? '',
+          thumbnail: '',
+          challengeIds: (found.challenge_ids ?? []).map(String),
+        };
+        setCourse(mapped);
+
+        const ordered = mapped.challengeIds
+          .map(cid => {
+            const raw = challengesData.find(c => String(c.id) === cid);
+            if (!raw) return null;
+            return {
+              id: String(raw.id),
+              title: raw.title ?? '',
+              difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Challenge['difficulty'],
+            };
+          })
+          .filter((c): c is Challenge => c !== null);
+        setChallenges(ordered);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const DIFF_CLASS: Record<string, string> = {
     Easy:   styles.badgeEasy,
@@ -71,19 +108,23 @@ export default function CourseDetail() {
     Hard:   styles.badgeHard,
   };
 
-  if (!course) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.container}>
-          <Link to="/courses" className={styles.back}><IconChevronLeft /> Courses</Link>
-          <p className={styles.notFound}>Course not found.</p>
-        </div>
+  if (loading) return (
+    <div className={styles.page}>
+      <div className={styles.container}>
+        <Link to="/courses" className={styles.back}><IconChevronLeft /> Courses</Link>
+        <p style={{ color: 'var(--text-muted, #888)', padding: '1rem 0' }}>Loading…</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  const courseMap = Object.fromEntries(allChallenges.map(c => [c.id, c]));
-  const challenges = course.challengeIds.map(cid => courseMap[cid]).filter(Boolean) as Challenge[];
+  if (error || !course) return (
+    <div className={styles.page}>
+      <div className={styles.container}>
+        <Link to="/courses" className={styles.back}><IconChevronLeft /> Courses</Link>
+        <p className={styles.notFound}>{error || 'Course not found.'}</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
@@ -96,7 +137,7 @@ export default function CourseDetail() {
             {course.thumbnail ? (
               <img
                 src={course.thumbnail}
-                alt={course.title}
+                alt={course.name}
                 className={styles.thumbnailImg}
                 onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
               />
@@ -107,7 +148,7 @@ export default function CourseDetail() {
 
           <div className={styles.headerInfo}>
             <p className={styles.headerLabel}>Course</p>
-            <h1 className={styles.headerTitle}>{course.title}</h1>
+            <h1 className={styles.headerTitle}>{course.name}</h1>
             {course.description && (
               <p className={styles.headerDesc}>{course.description}</p>
             )}

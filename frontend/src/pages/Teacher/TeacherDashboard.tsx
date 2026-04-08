@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './TeacherDashboard.module.css';
 import { LS } from '../../constants/storage';
+import { apiFetch } from '../../services/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -8,6 +10,13 @@ interface TeacherUser {
   name: string;
   role: string;
   teacherId: string;
+}
+
+interface ApiStats {
+  challenges: number;
+  courses: number;
+  exams: number;
+  groups: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -35,17 +44,6 @@ function IconArrowLeft14() {
       <polyline points="12 19 5 12 12 5" />
     </svg>
   );
-}
-
-function loadCount(key: string, teacherId: string): number {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const items = JSON.parse(raw) as Array<{ teacherId: string }>;
-      return items.filter(i => i.teacherId === teacherId).length;
-    }
-  } catch { /* ignore */ }
-  return 0;
 }
 
 // ── Icons (20px for stat cards) ───────────────────────────────────────────────
@@ -138,10 +136,17 @@ const QUICK_ACCESS = [
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const teacher = getTeacher();
-  const tid     = teacher.teacherId;
   const today   = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const originalUser = getOriginalUser();
   const isAdminPreview = originalUser?.role === 'admin';
+
+  const [stats, setStats] = useState<ApiStats | null>(null);
+
+  useEffect(() => {
+    apiFetch<ApiStats>('/api/stats')
+      .then(setStats)
+      .catch(() => { /* non-fatal */ });
+  }, []);
 
   function restoreAdmin() {
     const originalUserStr = localStorage.getItem(LS.ORIGINAL_USER);
@@ -153,16 +158,11 @@ export default function TeacherDashboard() {
     navigate('/admin/dashboard');
   }
 
-  const challengeCount = loadCount(LS.T_CHALLENGES, tid);
-  const courseCount    = loadCount(LS.T_COURSES,    tid);
-  const examCount      = loadCount(LS.T_EXAMS,      tid);
-  const groupCount     = loadCount(LS.T_GROUPS,     tid);
-
   const STATS = [
-    { id: 'challenges', label: 'My Challenges', value: challengeCount, accent: 'teal',  icon: <IconBolt20 />  },
-    { id: 'courses',    label: 'My Courses',    value: courseCount,    accent: 'blue',  icon: <IconBook20 />  },
-    { id: 'exams',      label: 'My Exams',      value: examCount,      accent: 'green', icon: <IconClip20 />  },
-    { id: 'groups',     label: 'My Groups',     value: groupCount,     accent: 'amber', icon: <IconUsers20 /> },
+    { id: 'challenges', label: 'My Challenges', value: stats?.challenges ?? '—', accent: 'teal',  icon: <IconBolt20 />  },
+    { id: 'courses',    label: 'My Courses',    value: stats?.courses    ?? '—', accent: 'blue',  icon: <IconBook20 />  },
+    { id: 'exams',      label: 'My Exams',      value: stats?.exams      ?? '—', accent: 'green', icon: <IconClip20 />  },
+    { id: 'groups',     label: 'My Groups',     value: stats?.groups     ?? '—', accent: 'amber', icon: <IconUsers20 /> },
   ] as const;
 
   return (

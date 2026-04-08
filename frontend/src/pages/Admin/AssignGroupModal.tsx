@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Course, MockGroup } from './ManageCourses';
 import styles from './AssignGroupModal.module.css';
+import { apiFetch } from '../../services/api';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -58,10 +59,9 @@ export default function AssignGroupModal({ course, groups, onClose, onConfirm }:
   async function handleConfirm() {
     setLoading(true);
     try {
-      await fetch(`/api/courses/${course.id}/assign`, {
+      await apiFetch(`/api/courses/${course.id}/assign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupIds: selected }),
+        body: JSON.stringify({ group_ids: selected.map(Number) }),
       });
     } catch { /* optimistic */ } finally {
       setLoading(false);
@@ -85,7 +85,7 @@ export default function AssignGroupModal({ course, groups, onClose, onConfirm }:
           <div>
             <p className={styles.modalEyebrow}>Course assignment</p>
             <h2 className={styles.modalTitle}>Assign to Groups</h2>
-            <p className={styles.modalSub} title={course.title}>{course.title}</p>
+            <p className={styles.modalSub} title={course.name}>{course.name}</p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close modal">
             <IconX />
