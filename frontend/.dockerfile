@@ -1,16 +1,10 @@
-FROM node:25-bookworm-slim
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package files first for dependency caching
-COPY package*.json ./
+RUN npm install -g vite
 
-# Install dependencies
+COPY package.json package-lock.json ./
 RUN npm install
 
-# Copy the rest of the application (dependencies and other stuff)
-COPY . .
-
-EXPOSE 5173
-
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

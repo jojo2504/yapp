@@ -152,6 +152,24 @@ impl DockerClient {
     }
 
 
+    /// Writes `input` to `/tmp/stdin` inside the container so that the run
+    /// command can redirect it with `< /tmp/stdin`.
+    pub async fn inject_stdin(
+        &self,
+        container_name: &str,
+        input: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let cmd = vec![
+            "bash".to_string(),
+            "-c".to_string(),
+            // Use a heredoc with a distinctive marker so arbitrary input
+            // (including quotes and backslashes) is written verbatim.
+            format!("cat > /tmp/stdin << '_JUDGE_STDIN_EOF_'\n{}\n_JUDGE_STDIN_EOF_", input),
+        ];
+        self.run_command(container_name, cmd, None).await?;
+        Ok(())
+    }
+
     pub async fn delete_container(&self, container_name: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let stop_opts = StopContainerOptions { t: Some(0), ..Default::default() };
         self.docker.stop_container(container_name, Some(stop_opts)).await?;

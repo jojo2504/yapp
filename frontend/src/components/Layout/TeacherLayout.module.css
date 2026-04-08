@@ -1,0 +1,128 @@
+/* ── Outer layout ────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  padding-top: 64px; /* fixed navbar */
+  background-color: #0b0b0f;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+.sidebar {
+  width: 250px;
+  min-width: 250px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: #0d0d12;
+  border-right: 1px solid #1c1c28;
+  display: flex;
+  flex-direction: column;
+  padding: 1.75rem 0.875rem 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: #1c1c28 transparent;
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #1c1c28; border-radius: 2px; }
+
+.sidebarHeading {
+  font-size: 0.675rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #334155;
+  padding: 0 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Sidebar nav ─────────────────────────────────────────────────── */
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.sidebarLink {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.575rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: none;
+  transition: background 0.18s, color 0.18s;
+  border-left: 2px solid transparent;
+}
+
+.sidebarLink:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+}
+
+/* Teal active state (differentiates from admin's purple) */
+.sidebarLinkActive {
+  background: rgba(13, 148, 136, 0.1);
+  color: #5eead4;
+  border-left-color: #0d9488;
+}
+
+.sidebarLinkActive:hover {
+  background: rgba(13, 148, 136, 0.14);
+  color: #5eead4;
+}
+
+.sidebarIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+/* ── Sidebar footer ──────────────────────────────────────────────── */
+.sidebarFooter {
+  padding-top: 0.5rem;
+}
+
+.sidebarDivider {
+  height: 1px;
+  background: #1c1c28;
+  margin-bottom: 0.875rem;
+}
+
+.backLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.525rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+  text-decoration: none;
+  transition: background 0.18s, color 0.18s;
+}
+
+.backLink:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #64748b;
+}
+
+/* ── Main content area ───────────────────────────────────────────── */
+.main {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+}

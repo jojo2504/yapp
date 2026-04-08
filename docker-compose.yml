@@ -9,7 +9,6 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - postgres
       - backend-go
 
   backend-go:
@@ -20,10 +19,14 @@ services:
       - ./backend:/app
     ports:
       - "8080:8080"
-    stop_grace_period: 2s # Workaround for the cargo watch signals taking 10s to stop
+    env_file: ".env"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    stop_grace_period: 2s
     depends_on:
-      - postgres
-      - redis
+      redis:
+        condition: service_healthy
 
   rust-judge:
     build:
@@ -34,9 +37,12 @@ services:
       - rust-target:/judge/target
       - /var/run/docker.sock:/var/run/docker.sock
       - shared:/shared
-    stop_grace_period: 2s # Workaround for the cargo watch signals taking 10s to stop
+    stop_grace_period: 2s
     depends_on:
-      - backend-go
+      backend-go:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   rust-test:
     build:
@@ -52,27 +58,20 @@ services:
       - backend-go
 
   redis:
-    image: redis:8.2.3
+    image: redis:7-alpine
     volumes:
       - redis-data:/data
     restart: always
     ports:
       - "6379:6379"
     command: redis-server
-
-  postgres:
-    image: postgres
-    env_file: ".env"
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATA: /data/postgres
-      POSTGRES_DB: database
-    volumes:
-      - postgres-data:/data/postgres
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   redis-data:
-  postgres-data:
   rust-target:
   shared:

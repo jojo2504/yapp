@@ -1,4 +1,5 @@
 pub mod docker;
-pub mod redis;
 pub mod models;
+pub mod redis;
+pub mod request;
 pub mod task;
