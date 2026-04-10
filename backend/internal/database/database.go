@@ -29,20 +29,19 @@ func Connect() *gorm.DB {
 		// Supabase uses PgBouncer in transaction mode, which does not support
 		// prepared statements. prefer_simple_protocol=true disables pgx's
 		// prepared-statement cache and prevents SQLSTATE 42P05 errors.
-		sep := "&"
-		if !strings.Contains(dsn, "?") {
-			sep = "?"
-		}
 		if !strings.Contains(dsn, "sslmode=") {
+			sep := "&"
+			if !strings.Contains(dsn, "?") {
+				sep = "?"
+			}
 			dsn += sep + "sslmode=require"
-			sep = "&"
-		}
-		if !strings.Contains(dsn, "prefer_simple_protocol=") {
-			dsn += sep + "prefer_simple_protocol=true"
 		}
 	}
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true, // disables implicit prepared statement usage
+	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
