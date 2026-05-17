@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Layout/Navbar';
 import ProtectedRoute, { RoleGuard } from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -34,11 +34,17 @@ import TeacherExams from './pages/Teacher/TeacherExams';
 import TeacherGroups from './pages/Teacher/TeacherGroups';
 import Playground from './pages/Playground/Playground';
 
+function ConditionalNavbar() {
+  const location = useLocation();
+  if (location.pathname === '/') return null;
+  return <Navbar />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
     <BrowserRouter>
-      <Navbar />
+      <ConditionalNavbar />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />

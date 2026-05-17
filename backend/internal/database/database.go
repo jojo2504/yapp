@@ -42,8 +42,10 @@ func Connect() *gorm.DB {
 		DSN:                  dsn,
 		PreferSimpleProtocol: true, // disables implicit prepared statement usage
 	}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+        Logger:      logger.Default.LogMode(logger.Info),
+        // Add this line to explicitly disable GORM-level statement caching
+        PrepareStmt: false,
+    })
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}

@@ -1,32 +1,17 @@
 import { Link } from 'react-router-dom';
 import styles from './Landing.module.css';
+import { LS } from '../../constants/storage';
 
-function IconTerminal() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="4 17 10 11 4 5" />
-      <line x1="12" y1="19" x2="20" y2="19" />
-    </svg>
-  );
-}
-
-function IconBook() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-    </svg>
-  );
-}
-
-function IconClipboard() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 11l3 3L22 4" />
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-    </svg>
-  );
-}
+// Assets
+import yappLogo from '../../assets/Logo/YAPPlogo.png';
+import ClassicRedCrystal from '../../assets/LandingGeometry/ClassicRedCrystal.png';
+import DiamondRubyCrystals from '../../assets/LandingGeometry/DiamondRubyCrystals.png';
+import LongRedCrystal from '../../assets/LandingGeometry/LongRedCrystal.png';
+import LongCrystal from '../../assets/LandingGeometry/LongCrystal.png';
+import RoundedSmallCrystal from '../../assets/LandingGeometry/RoundedSmallCrystal.png';
+import LittleRedDot from '../../assets/LandingGeometry/LittleRedDot.png';
+import Pastille from '../../assets/LandingGeometry/Pastille.png';
+import GeometryMesh from '../../assets/LandingGeometry/GeometryMesh.webp';
 
 function IconArrow() {
   return (
@@ -37,120 +22,122 @@ function IconArrow() {
   );
 }
 
+function IconSearch() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
 export default function Landing() {
+  const isLoggedIn = Boolean(localStorage.getItem(LS.TOKEN));
+  const storedUser = localStorage.getItem(LS.USER);
+  const userRole: string = storedUser ? (JSON.parse(storedUser).role ?? '') : '';
+  const dashboardTo = userRole === 'Admin' ? '/admin/dashboard' : '/dashboard';
+
   return (
     <div className={styles.page}>
 
+      {/* ── Navbar ── */}
+      <nav className={styles.navbar}>
+        <Link to="/" className={styles.logo}>
+          <img src={yappLogo} alt="YAPP" className={styles.logoImg} />
+          <span className={styles.logoText}>APP</span>
+        </Link>
+
+        <ul className={styles.navLinks}>
+          <li><Link to="/challenges">Challenges</Link></li>
+          <li><Link to="/courses">Courses</Link></li>
+          <li><Link to="/exam">Examens</Link></li>
+          <li><Link to="/playground">Playground</Link></li>
+        </ul>
+
+        <div className={styles.navActions}>
+          {isLoggedIn ? (
+            <>
+              <Link to={dashboardTo} className={styles.btnDashboard}>Dashboard</Link>
+              <Link to="/" className={styles.btnLogout} onClick={() => {
+                localStorage.removeItem(LS.TOKEN);
+                localStorage.removeItem(LS.USER);
+              }}>Logout</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className={styles.btnDashboard}>Login</Link>
+              <Link to="/signup" className={styles.btnLogout}>Sign Up</Link>
+            </>
+          )}
+        </div>
+      </nav>
+
       {/* ── Hero ── */}
       <section className={styles.hero}>
-        <div className={styles.heroBg} />
-        <div className={styles.heroGlowTop} />
-        <div className={styles.heroGlowBottom} />
-
-        <div className={styles.heroContent}>
-          <div className={styles.badge}>
-            <span className={styles.badgeDot} />
-            Built for developers, students &amp; universities
-          </div>
+        <div className={styles.heroLeft}>
+          {/* GeometryMesh behind the title */}
+          <img src={GeometryMesh} alt="" className={styles.meshBg} />
 
           <h1 className={styles.headline}>
-            Code. Learn.<br />
-            <span className={styles.accentGradient}>Excel.</span>
+            Codez.<br />
+            Apprenez.<br />
+            <span className={styles.accentRuby}>Evaluez.</span>
           </h1>
 
-          <p className={styles.subheadline}>
-            Yapp is the all-in-one platform for mastering programming — tackle daily challenges,
-            follow expert-led courses, and ace your university exams.
-          </p>
+          <div className={styles.badge}>
+            <img src={Pastille} alt="" className={styles.badgeIcon} />
+            <span>Concu pour les futurs developpeurs</span>
+          </div>
 
           <div className={styles.ctaGroup}>
             <Link to="/challenges" className={styles.btnPrimary}>
-              Start Challenges <IconArrow />
+              Commencer un Challenge <IconArrow />
             </Link>
             <Link to="/courses" className={styles.btnSecondary}>
-              Explore Courses
+              Explorer les Cours
             </Link>
           </div>
+        </div>
+
+        <div className={styles.heroRight}>
+          {/* Code snippet card — Apple window style */}
+          <div className={styles.codeCard}>
+            <div className={styles.codeCardHeader}>
+              <div className={styles.trafficLights}>
+                <span className={styles.dotRed} />
+                <span className={styles.dotYellow} />
+                <span className={styles.dotGreen} />
+              </div>
+              <span className={styles.codeCardLang}># Python</span>
+              <span className={styles.codeCardSearch}><IconSearch /></span>
+            </div>
+            <pre className={styles.codeBlock}>
+              <code>
+{`def two_sum(nums, target):
+    seen = {}
+    for i, n in enumerate(nums):
+        if target - n in seen:
+            return [seen[target-n], i]
+        seen[n] = i`}
+              </code>
+            </pre>
+          </div>
+
+          {/* Floating crystals — precise placement */}
+          {/* DiamondRuby: above window, slightly left */}
+          <img src={DiamondRubyCrystals} alt="" className={`${styles.crystal} ${styles.crystalAbove}`} />
+          {/* ClassicRedCrystal: below window, aligned with DiamondRuby */}
+          <img src={ClassicRedCrystal} alt="" className={`${styles.crystal} ${styles.crystalBelow}`} />
+          {/* LongRedCrystal: bottom-right, overlapping code window */}
+          <img src={LongRedCrystal} alt="" className={`${styles.crystal} ${styles.crystalLongRed}`} />
+          {/* LongCrystal: top-left symmetric, overlapping code window */}
+          <img src={LongCrystal} alt="" className={`${styles.crystal} ${styles.crystalLongPink}`} />
+          {/* RoundedSmallCrystal: behind top-left corner of window */}
+          <img src={RoundedSmallCrystal} alt="" className={`${styles.crystal} ${styles.crystalRound}`} />
+          {/* LittleRedDot: left, vertically centered */}
+          <img src={LittleRedDot} alt="" className={`${styles.crystal} ${styles.crystalDot}`} />
         </div>
       </section>
-
-      {/* ── Features ── */}
-      <section className={styles.features}>
-        <p className={styles.sectionLabel}>What we offer</p>
-        <h2 className={styles.sectionTitle}>Everything You Need to Excel</h2>
-        <p className={styles.sectionSubtitle}>
-          Three powerful tools, one platform — designed to take you from first
-          line of code to exam-ready professional.
-        </p>
-
-        <div className={styles.featuresGrid}>
-
-          {/* Challenges */}
-          <div className={styles.featureCard}>
-            <div className={`${styles.featureIcon} ${styles.iconChallenges}`}>
-              <IconTerminal />
-            </div>
-            <h3 className={styles.featureTitle}>Coding Challenges</h3>
-            <p className={styles.featureDesc}>
-              Sharpen your algorithmic thinking with 500+ curated problems across
-              data structures, algorithms, and system design. Compete on leaderboards
-              and track your progress over time.
-            </p>
-            <Link to="/challenges" className={`${styles.featureLink} ${styles.featureLinkChallenges}`}>
-              Browse challenges <IconArrow />
-            </Link>
-          </div>
-
-          {/* Courses */}
-          <div className={styles.featureCard}>
-            <div className={`${styles.featureIcon} ${styles.iconCourses}`}>
-              <IconBook />
-            </div>
-            <h3 className={styles.featureTitle}>Programming Courses</h3>
-            <p className={styles.featureDesc}>
-              Follow structured learning paths from beginner to advanced. Video
-              lessons, interactive exercises, and hands-on projects guided by
-              industry experts and top academics.
-            </p>
-            <Link to="/courses" className={`${styles.featureLink} ${styles.featureLinkCourses}`}>
-              Explore courses <IconArrow />
-            </Link>
-          </div>
-
-          {/* Exams */}
-          <div className={styles.featureCard}>
-            <div className={`${styles.featureIcon} ${styles.iconExams}`}>
-              <IconClipboard />
-            </div>
-            <h3 className={styles.featureTitle}>Exam Sessions</h3>
-            <p className={styles.featureDesc}>
-              Prepare for university and school assessments with past-paper
-              practice, timed exam simulations, and instant feedback — built
-              in partnership with academic institutions.
-            </p>
-            <Link to="/exam" className={`${styles.featureLink} ${styles.featureLinkExams}`}>
-              View exam sessions <IconArrow />
-            </Link>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className={styles.footer}>
-        <div className={styles.footerInner}>
-          <span className={styles.footerLogo}>Ya<span>pp</span></span>
-          <ul className={styles.footerNav}>
-            <li><Link to="/challenges">Challenges</Link></li>
-            <li><Link to="/courses">Courses</Link></li>
-            <li><Link to="/exam">Exams</Link></li>
-          </ul>
-          <span className={styles.footerCopyright}>
-            &copy; {new Date().getFullYear()} Yapp. All rights reserved.
-          </span>
-        </div>
-      </footer>
-
     </div>
   );
 }
