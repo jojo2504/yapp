@@ -1,3 +1,18 @@
+/* ══════════════════════════════════════════════════════════════════
+   Login — Ruby/Peach glassmorphism
+   Palette:
+     --page-bg:       #FDFBFA   (off-white, faint pink)
+     --card-bg:       rgba(255, 220, 220, 0.40)
+     --card-border:   rgba(255, 255, 255, 0.60)
+     --text:          #1A1A1A
+     --text-muted:    #6B6B6B
+     --input-bg:      rgba(255, 255, 255, 0.50)
+     --input-border:  rgba(255, 255, 255, 0.70)
+     --accent-pink:   #E91E63
+     --accent-orange: #FF6B35
+     --shadow:        0 20px 60px rgba(231, 100, 130, 0.15)
+   ══════════════════════════════════════════════════════════════════ */
+
 /* ── Page shell ──────────────────────────────────────────────────── */
 .page {
   position: relative;
@@ -5,38 +20,75 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6rem 1.25rem 3rem; /* top offset for fixed 64px navbar */
+  padding: 6rem 1.25rem 3rem;
   overflow: hidden;
-  background-color: #0b0b0f;
+  background:
+    radial-gradient(ellipse at 70% 30%, #fde4d6 0%, #FFEEE3 45%, #fdfbfa 100%);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #1a1a1a;
 }
 
-/* Dot grid */
-.bg {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    rgba(255, 255, 255, 0.05) 1px,
-    transparent 0
-  );
-  background-size: 36px 36px;
-  pointer-events: none;
+/* ── Card wrapper (anchors crystals to the card, not the viewport) ── */
+.cardWrap {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
 }
 
-/* Purple ambient glow */
-.glow {
+/* ── Floating crystals — anchored to .cardWrap ───────────────────── */
+.crystal {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 640px;
-  height: 520px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(124, 58, 237, 0.14) 0%,
-    transparent 65%
-  );
   pointer-events: none;
+  user-select: none;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 28px rgba(185, 53, 53, 0.18));
+}
+
+.crystalTopLeft {
+  width: 80px;
+  top: -70px;
+  left: 340px;
+  z-index: 2;
+}
+
+.crystalTopRight {
+  width: 130px;
+  bottom: -40px;
+  right: -66px;
+  z-index: 2;
+}
+
+.crystalMidLeft {
+  width: 180px;
+  top: -70px;
+  left: -90px;
+  z-index: 1;
+}
+
+.crystalMidRight {
+  width: 70px;
+  bottom: -33px;
+  left: -3px;
+  z-index: 3;
+}
+
+.crystalBottomLeft {
+  width: 110px;
+  bottom: 40px;
+  left: -100px;
+  z-index: 2;
+}
+
+.crystalBottomRight {
+  width: 90px;
+  bottom: 270px;
+  right: -100px;
+  z-index: 2;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
 }
 
 /* ── Card ────────────────────────────────────────────────────────── */
@@ -44,11 +96,16 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 420px;
-  background: #111118;
-  border: 1px solid #1c1c28;
-  border-radius: 20px;
-  padding: 2.75rem 2.25rem 2.25rem;
+  padding: 48px 40px;
+  border-radius: 24px;
+  background: rgba(255, 220, 220, 0.45);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.60);
+  box-shadow:
+    0 20px 60px rgba(231, 100, 130, 0.18),
+    0 2px 8px rgba(231, 100, 130, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 /* ── Header ──────────────────────────────────────────────────────── */
@@ -61,38 +118,48 @@
 }
 
 .logo {
-  display: inline-block;
-  font-size: 1.25rem;
-  font-weight: 800;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: #f1f5f9;
-  margin-bottom: 1.5rem;
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  text-decoration: none;
+  margin-bottom: 1.25rem;
 }
 
-.logo span {
-  color: #7c3aed;
+.logoImg {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+}
+
+.logoText {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #1a1a1a;
+  letter-spacing: -0.02em;
+  margin-left: -2px;
 }
 
 .title {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #1a1a1a;
   letter-spacing: -0.025em;
-  margin-bottom: 0.4rem;
+  margin: 0 0 0.4rem;
 }
 
 .subtitle {
-  font-size: 0.875rem;
-  color: #64748b;
+  font-size: 0.9375rem;
+  color: #6b6b6b;
   line-height: 1.5;
+  margin: 0;
 }
 
 /* ── Form ────────────────────────────────────────────────────────── */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
 }
 
 .field {
@@ -102,41 +169,47 @@
 }
 
 .label {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: #3a3a3a;
   letter-spacing: 0.01em;
 }
 
 .input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: #0b0b0f;
-  border: 1px solid #1c1c28;
-  border-radius: 10px;
-  color: #f1f5f9;
+  padding: 0.8rem 1rem;
+  background: rgba(255, 255, 255, 0.50);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  border-radius: 12px;
+  color: #1a1a1a;
   font-size: 0.9375rem;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .input::placeholder {
-  color: #2d3748;
+  color: #b8a8a8;
+}
+
+.input:hover {
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .input:focus {
-  border-color: rgba(124, 58, 237, 0.55);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(233, 30, 99, 0.55);
+  box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.12);
 }
 
 /* ── Error banner ────────────────────────────────────────────────── */
 .errorBanner {
+  margin: 0;
   padding: 0.75rem 1rem;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 9px;
-  color: #f87171;
+  background: rgba(233, 30, 99, 0.08);
+  border: 1px solid rgba(233, 30, 99, 0.25);
+  border-radius: 10px;
+  color: #c2185b;
   font-size: 0.875rem;
   line-height: 1.5;
 }
@@ -144,65 +217,85 @@
 /* ── Submit ──────────────────────────────────────────────────────── */
 .btnSubmit {
   width: 100%;
-  padding: 0.825rem;
-  margin-top: 0.125rem;
+  padding: 0.9rem;
+  margin-top: 0.5rem;
   border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  border-radius: 12px;
+  background: linear-gradient(90deg, #e91e63 0%, #ff6b35 100%);
   color: #fff;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+  letter-spacing: 0.01em;
   transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 8px 24px rgba(233, 30, 99, 0.25);
 }
 
 .btnSubmit:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.95;
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.32);
+  box-shadow: 0 12px 32px rgba(233, 30, 99, 0.35);
 }
 
 .btnSubmit:active:not(:disabled) {
   transform: translateY(0);
 }
 
+.btnSubmit:focus-visible {
+  outline: none;
+  box-shadow:
+    0 8px 24px rgba(233, 30, 99, 0.25),
+    0 0 0 4px rgba(233, 30, 99, 0.25);
+}
+
 .btnSubmit:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 /* ── Footer ──────────────────────────────────────────────────────── */
 .footer {
   text-align: center;
-  margin-top: 1.75rem;
-  font-size: 0.875rem;
-  color: #475569;
+  margin: 1.75rem 0 0;
+  font-size: 0.9rem;
+  color: #6b6b6b;
 }
 
 .footerLink {
-  color: #a78bfa;
-  font-weight: 500;
+  color: #e91e63;
+  font-weight: 600;
+  text-decoration: none;
   transition: color 0.2s;
 }
 
-.footerLink:hover {
-  color: #c4b5fd;
-}
-
-/* ── Test hint ───────────────────────────────────────────────────── */
-.testHint {
-  text-align: center;
-  margin-top: 1rem;
-  font-size: 0.75rem;
-  color: #2d3748;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+.footerLink:hover,
+.footerLink:focus-visible {
+  color: #c2185b;
+  text-decoration: underline;
 }
 
 /* ── Responsive ──────────────────────────────────────────────────── */
-@media (max-width: 480px) {
+@media (max-width: 1023px) {
+  .crystalTopLeft     { width: 90px;  top: -50px; left: -40px; }
+  .crystalTopRight    { width: 80px;  top: -40px; right: -40px; }
+  .crystalMidLeft     { width: 65px;  left: -55px; }
+  .crystalMidRight    { width: 95px;  right: -55px; }
+  .crystalBottomLeft  { width: 55px;  bottom: -40px; left: -20px; }
+  .crystalBottomRight { width: 70px;  bottom: -50px; right: -30px; }
+}
+
+@media (max-width: 767px) {
+  .crystal { display: none; }
+
   .card {
-    padding: 2rem 1.375rem 1.75rem;
-    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    border-radius: 20px;
   }
+
+  .title { font-size: 1.5rem; }
+}
+
+@media (max-width: 374px) {
+  .card { padding: 1.75rem 1.25rem; }
 }
