@@ -154,12 +154,12 @@
 }
 
 .headline {
-  font-size: clamp(3rem, 7vw, 4.5rem);
-  font-weight: 900;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: clamp(6rem, 7vw, 4.5rem);
   line-height: 1.05;
   letter-spacing: -0.04em;
   color: #2a2020;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.1rem;
   position: relative;
   top: -20px;
   z-index: 1;
@@ -189,6 +189,13 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 4px 18px rgba(160, 40, 40, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .badgeIcon {
@@ -263,8 +270,10 @@
 
 /* ── Code Card — Apple window style (1.4x bigger) ─────────────── */
 .codeCard {
+  min-height: 350px;
   position: relative;
   z-index: 2;
+    top: -50px;
   width: 530px;
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(14px);
@@ -334,8 +343,8 @@
   margin: 0;
   padding: 1.5rem 1.5rem;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.9rem;
-  line-height: 1.8;
+  font-size: 1.2rem;
+  line-height: 2.2;
   color: #3a2828;
   overflow-x: auto;
 }
@@ -354,7 +363,7 @@
 /* DiamondRubyCrystals: above window, slightly left */
 .crystalAbove {
   width: 80px;
-  top: -90px;
+  top: -150px;
   left: 500px;
   z-index: 3;
 
@@ -363,7 +372,7 @@
 /* ClassicRedCrystal: below window, aligned with DiamondRuby */
 .crystalBelow {
   width: 90px;
-  bottom:150px;
+  bottom:130px;
   left: 25%;
   transform: translateX(-50%);
   z-index: 3;
@@ -372,7 +381,7 @@
 /* LongRedCrystal: bottom-right, overlapping code window */
 .crystalLongRed {
   width: 130px;
-  bottom: 250px;
+  bottom: 200px;
   right: 8px;
   z-index: 3;
   rotate: -10deg;
@@ -382,30 +391,33 @@
 /* LongCrystal (pink): top-left symmetric, overlapping code window */
 .crystalLongPink {
   width: 115px;
-  bottom:250px;
+  bottom:200px;
   left: 8px;
   z-index: 3;
   rotate: 0deg;
-  animation: floatLongPink 6s ease-in-out infinite;
 }
 
 /* RoundedSmallCrystal: behind top-left corner of window */
 .crystalRound {
-  width: 200px;
-  top: -100px;
-  left: 30px;
+  width: 70px;
+  top: 70px;
+  left: 650px;
   z-index: 1;
-  animation: floatRound 7s ease-in-out infinite;
 }
 
 /* LittleRedDot: left, vertically centered relative to window */
 .crystalDot {
   width: 32px;
   left: -25px;
-  top: 50%;
+  top:120px;
   transform: translateY(-50%);
   z-index: 3;
-  animation: floatDot 4.5s ease-in-out infinite;
+}
+.crystalTopLeft{
+    width: 175px;
+    top:-140px;
+    left: -10px;
+    z-index: 1;
 }
 
 

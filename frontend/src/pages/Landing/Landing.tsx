@@ -8,6 +8,7 @@ import ClassicRedCrystal from '../../assets/LandingGeometry/ClassicRedCrystal.pn
 import DiamondRubyCrystals from '../../assets/LandingGeometry/DiamondRubyCrystals.png';
 import LongRedCrystal from '../../assets/LandingGeometry/LongRedCrystal.png';
 import LongCrystal from '../../assets/LandingGeometry/LongCrystal.png';
+import RoundedCrystal from '../../assets/LandingGeometry/RoundedCrystals.png';
 import RoundedSmallCrystal from '../../assets/LandingGeometry/RoundedSmallCrystal.png';
 import LittleRedDot from '../../assets/LandingGeometry/LittleRedDot.png';
 import Pastille from '../../assets/LandingGeometry/Pastille.png';
@@ -136,6 +137,8 @@ export default function Landing() {
           <img src={RoundedSmallCrystal} alt="" className={`${styles.crystal} ${styles.crystalRound}`} />
           {/* LittleRedDot: left, vertically centered */}
           <img src={LittleRedDot} alt="" className={`${styles.crystal} ${styles.crystalDot}`} />
+          {/*RoundedCrystal top left behind the window */}
+          <img src={RoundedCrystal} alt="" className={`${styles.crystal} ${styles.crystalTopLeft}`} />
         </div>
       </section>
     </div>
