@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Signup.module.css';
+import yappLogo from '../../assets/Logo/YAPPlogo.png';
 
 type Role = 'student' | 'teacher';
 
@@ -62,12 +63,13 @@ export default function Signup() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.bg} />
-      <div className={styles.glow} />
-
-      <div className={styles.card}>
+      <div className={styles.cardWrap}>
+        <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <Link to="/" className={styles.logo}>Ya<span>pp</span></Link>
+          <Link to="/" className={styles.logo} aria-label="Yapp home">
+            <img src={yappLogo} alt="" className={styles.logoImg} />
+            <span className={styles.logoText}>APP</span>
+          </Link>
           <h1 className={styles.title}>Create an account</h1>
           <p className={styles.subtitle}>Join thousands of learners today</p>
         </div>
@@ -162,6 +164,7 @@ export default function Signup() {
           Already have an account?{' '}
           <Link to="/login" className={styles.footerLink}>Sign in</Link>
         </p>
+        </div>
       </div>
     </div>
   );

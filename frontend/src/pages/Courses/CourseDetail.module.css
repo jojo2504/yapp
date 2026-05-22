@@ -1,8 +1,10 @@
-/* ── Page ─────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   Course Detail — Ruby / Peachy DA
+   ══════════════════════════════════════════════════════════════════ */
+
 .page {
   min-height: 100vh;
-  background-color: #0b0b0f;
-  padding-top: 64px;
+  padding-top: var(--navbar-height);
 }
 
 .container {
@@ -21,15 +23,15 @@
   gap: 0.4rem;
   font-size: 0.8375rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 0.18s, gap 0.18s;
   align-self: flex-start;
 }
 
 .back:hover {
-  color: #a78bfa;
-  gap: 0.25rem;
+  color: var(--ruby);
+  gap: 0.55rem;
 }
 
 /* ── Header ──────────────────────────────────────────────────────── */
@@ -37,21 +39,24 @@
   display: flex;
   gap: 2rem;
   padding-bottom: 2.25rem;
-  border-bottom: 1px solid #1c1c28;
+  border-bottom: 1px solid var(--border-divider);
   align-items: flex-start;
 }
 
 .thumbnail {
   width: 120px;
   height: 120px;
-  border-radius: 14px;
-  background: #111118;
-  border: 1px solid #1c1c28;
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px solid var(--border-glass);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
+  box-shadow: var(--shadow-glass-sm);
 }
 
 .thumbnailImg {
@@ -61,7 +66,8 @@
 }
 
 .thumbnailPlaceholder {
-  color: #1c1c28;
+  color: var(--ruby);
+  opacity: 0.4;
 }
 
 .headerInfo {
@@ -74,23 +80,23 @@
 
 .headerLabel {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #7c3aed;
+  letter-spacing: 0.12em;
+  color: var(--ruby);
 }
 
 .headerTitle {
   font-size: clamp(1.3rem, 3vw, 1.875rem);
   font-weight: 800;
-  color: #f1f5f9;
+  color: var(--text-primary);
   letter-spacing: -0.025em;
   line-height: 1.2;
 }
 
 .headerDesc {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text-secondary);
   line-height: 1.65;
 }
 
@@ -106,12 +112,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.25rem 0.7rem;
-  border-radius: 9999px;
+  padding: 0.28rem 0.75rem;
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 500;
-  background: #1c1c28;
-  color: #64748b;
+  background: var(--surface-glass-soft);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
 }
 
 /* ── Section ─────────────────────────────────────────────────────── */
@@ -124,7 +131,7 @@
 .sectionTitle {
   font-size: 1rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
@@ -136,26 +143,31 @@
 }
 
 .challengeItem {
-  background: #111118;
-  border: 1px solid #1c1c28;
-  border-radius: 12px;
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
   padding: 1rem 1.375rem;
   display: flex;
   align-items: center;
   gap: 1rem;
   text-decoration: none;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-glass-sm);
 }
 
 .challengeItem:hover {
-  border-color: rgba(124, 58, 237, 0.3);
-  background: rgba(124, 58, 237, 0.03);
+  border-color: var(--ruby-border);
+  background: var(--ruby-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(201, 74, 58, 0.1);
 }
 
 .challengeNum {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--ruby);
   min-width: 1.5rem;
   flex-shrink: 0;
 }
@@ -163,14 +175,14 @@
 .challengeTitle {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--text-primary);
   flex: 1;
   min-width: 0;
 }
 
 .challengeBadge {
   padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -178,15 +190,15 @@
   flex-shrink: 0;
 }
 
-.badgeEasy   { background: rgba(16, 185, 129, 0.12); color: #34d399; }
-.badgeMedium { background: rgba(245, 158, 11, 0.12);  color: #fbbf24; }
-.badgeHard   { background: rgba(239, 68, 68, 0.12);   color: #f87171; }
+.badgeEasy   { background: var(--emerald-tint); color: var(--emerald); }
+.badgeMedium { background: var(--amber-tint);   color: var(--amber); }
+.badgeHard   { background: var(--ruby-tint);    color: var(--ruby); }
 
 /* ── Not found ───────────────────────────────────────────────────── */
 .notFound {
   padding: 4rem 2rem;
   text-align: center;
-  color: #334155;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -194,10 +206,12 @@
 .empty {
   padding: 2rem 1.5rem;
   text-align: center;
-  background: #111118;
-  border: 1px dashed #1c1c28;
-  border-radius: 12px;
-  color: #334155;
+  background: var(--surface-glass-soft);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px dashed var(--ruby-border);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
   font-size: 0.875rem;
 }
 

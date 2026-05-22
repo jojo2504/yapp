@@ -34,7 +34,7 @@
   font-size: 1.25rem;
   font-weight: 800;
   font-family: 'Inter', system-ui, sans-serif;
-  color: #2a2020;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
   margin-left: -2px;
 }
@@ -59,18 +59,18 @@
   border-radius: 7px;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #5c4a4a;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 0.18s, background 0.18s;
 }
 
 .link:hover {
-  color: #2a2020;
+  color: var(--text-primary);
   background: rgba(180, 60, 60, 0.08);
 }
 
 .linkActive {
-  color: #2a2020;
+  color: var(--text-primary);
   background: rgba(180, 60, 60, 0.12);
 }
 
@@ -113,7 +113,7 @@
   padding: 0.45rem 1.1rem;
   border-radius: 8px;
   border: none;
-  background: linear-gradient(135deg, #c94a3a 0%, #b83535 100%);
+  background: var(--ruby-gradient);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
@@ -200,18 +200,18 @@
   border-radius: 8px;
   font-size: 0.95rem;
   font-weight: 500;
-  color: #5c4a4a;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 0.18s, background 0.18s;
 }
 
 .drawerLink:hover {
-  color: #2a2020;
+  color: var(--text-primary);
   background: rgba(180, 60, 60, 0.08);
 }
 
 .drawerLinkActive {
-  color: #2a2020;
+  color: var(--text-primary);
   background: rgba(180, 60, 60, 0.12);
 }
 

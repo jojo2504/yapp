@@ -1,7 +1,10 @@
-/* ── Page ────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   Manage Exams — Ruby / Peachy DA
+   ══════════════════════════════════════════════════════════════════ */
+
 .page {
   padding: 2.75rem 2.5rem 4rem;
-  max-width: 1000px;
+  max-width: 1100px;
   display: flex;
   flex-direction: column;
   gap: 2.25rem;
@@ -14,29 +17,29 @@
   justify-content: space-between;
   gap: 1.5rem;
   padding-bottom: 2.25rem;
-  border-bottom: 1px solid #1c1c28;
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .headerLabel {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #7c3aed;
+  letter-spacing: 0.12em;
+  color: var(--ruby);
   margin-bottom: 0.3rem;
 }
 
 .headerTitle {
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 800;
-  color: #f1f5f9;
+  color: var(--text-primary);
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
 
 .headerSub {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-secondary);
   margin-top: 0.35rem;
 }
 
@@ -44,10 +47,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.7rem 1.4rem;
+  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  border-radius: var(--radius-md);
+  background: var(--ruby-gradient);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
@@ -56,12 +59,13 @@
   white-space: nowrap;
   flex-shrink: 0;
   transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-ruby);
 }
 
 .btnCreate:hover {
-  opacity: 0.9;
+  opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+  box-shadow: var(--shadow-ruby-hover);
 }
 
 /* ── List ────────────────────────────────────────────────────────── */
@@ -74,31 +78,38 @@
 .empty {
   padding: 3rem;
   text-align: center;
-  background: #111118;
-  border: 1px dashed #1c1c28;
-  border-radius: 14px;
-  color: #334155;
+  background: var(--surface-glass-soft);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px dashed var(--ruby-border);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
-/* ── Exam card ───────────────────────────────────────────────────── */
+/* ── Card ────────────────────────────────────────────────────────── */
 .card {
-  background: #111118;
-  border: 1px solid #1c1c28;
-  border-radius: 14px;
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-glass-sm);
 }
 
 .card:hover {
-  border-color: #2a2a38;
+  border-color: var(--ruby-border);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(201, 74, 58, 0.1);
 }
 
 .cardBody {
   display: flex;
   align-items: flex-start;
   gap: 1.5rem;
-  padding: 1.5rem 1.625rem;
+  padding: 1.5rem 1.7rem;
 }
 
 .cardLeft {
@@ -119,7 +130,7 @@
 .cardTitle {
   font-size: 1rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
@@ -128,8 +139,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.2rem 0.65rem;
-  border-radius: 9999px;
+  padding: 0.22rem 0.7rem;
+  border-radius: var(--radius-pill);
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -137,16 +148,16 @@
   flex-shrink: 0;
 }
 
-.statusUpcoming  { background: rgba(14, 165, 233, 0.12); color: #38bdf8; }
-.statusActive    { background: rgba(16, 185, 129, 0.12); color: #34d399; }
-.statusCompleted { background: rgba(100, 116, 139, 0.12); color: #64748b; }
+.statusUpcoming  { background: var(--coral-tint);  color: var(--coral-dark); }
+.statusActive    { background: var(--emerald-tint); color: var(--emerald); }
+.statusCompleted { background: var(--surface-glass-soft); color: var(--text-muted); border: 1px solid var(--border-glass); }
 
 .activeDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 6px #34d399;
+  background: var(--emerald);
+  box-shadow: 0 0 6px var(--emerald);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -167,7 +178,7 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .cardStats {
@@ -181,12 +192,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.2rem 0.65rem;
-  border-radius: 9999px;
-  background: #1a1a24;
-  border: 1px solid #1c1c28;
+  padding: 0.22rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-glass-soft);
+  border: 1px solid var(--border-glass);
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -204,11 +215,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid #1c1c28;
-  background: transparent;
-  color: #64748b;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  background: var(--surface-glass-soft);
+  color: var(--text-secondary);
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: inherit;
@@ -218,9 +229,9 @@
 
 .btnViolations:hover,
 .btnViolationsOpen {
-  border-color: rgba(124, 58, 237, 0.4);
-  color: #a78bfa;
-  background: rgba(124, 58, 237, 0.07);
+  border-color: var(--ruby-border);
+  color: var(--ruby);
+  background: var(--ruby-soft);
 }
 
 .violationCount {
@@ -230,9 +241,9 @@
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9999px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  border-radius: var(--radius-pill);
+  background: var(--ruby-tint);
+  color: var(--ruby);
   font-size: 0.675rem;
   font-weight: 700;
 }
@@ -241,11 +252,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid #1c1c28;
-  background: transparent;
-  color: #64748b;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  background: var(--surface-glass-soft);
+  color: var(--text-secondary);
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: inherit;
@@ -254,20 +265,20 @@
 }
 
 .btnEdit:hover {
-  border-color: rgba(124, 58, 237, 0.4);
-  color: #a78bfa;
-  background: rgba(124, 58, 237, 0.06);
+  border-color: var(--ruby-border);
+  color: var(--ruby);
+  background: var(--ruby-soft);
 }
 
 .btnDelete {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid #1c1c28;
-  background: transparent;
-  color: #64748b;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  background: var(--surface-glass-soft);
+  color: var(--text-secondary);
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: inherit;
@@ -276,9 +287,9 @@
 }
 
 .btnDelete:hover {
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #f87171;
-  background: rgba(239, 68, 68, 0.06);
+  border-color: var(--ruby-border-strong);
+  color: var(--ruby);
+  background: var(--ruby-tint);
 }
 
 /* ── Inline delete confirm ───────────────────────────────────────── */
@@ -290,17 +301,17 @@
 
 .confirmText {
   font-size: 0.8125rem;
-  color: #f87171;
-  font-weight: 500;
+  color: var(--ruby);
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .btnConfirm {
-  padding: 0.4rem 0.8rem;
-  border-radius: 7px;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--ruby-border-strong);
+  background: var(--ruby-tint);
+  color: var(--ruby-dark);
   font-size: 0.8rem;
   font-weight: 600;
   font-family: inherit;
@@ -308,14 +319,14 @@
   transition: background 0.18s;
 }
 
-.btnConfirm:hover { background: rgba(239, 68, 68, 0.18); }
+.btnConfirm:hover { background: var(--ruby-tint-strong); }
 
 .btnCancelDel {
-  padding: 0.4rem 0.8rem;
-  border-radius: 7px;
-  border: 1px solid #1c1c28;
-  background: transparent;
-  color: #64748b;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-glass);
+  background: var(--surface-glass-soft);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   font-weight: 500;
   font-family: inherit;
@@ -323,13 +334,13 @@
   transition: color 0.18s, background 0.18s;
 }
 
-.btnCancelDel:hover { color: #94a3b8; background: rgba(255,255,255,0.04); }
+.btnCancelDel:hover { color: var(--text-primary); background: var(--surface-glass); }
 
 /* ── Violations accordion ────────────────────────────────────────── */
 .violationsSection {
-  border-top: 1px solid #1c1c28;
-  padding: 1.25rem 1.625rem 1.5rem;
-  background: #0d0d12;
+  border-top: 1px solid var(--border-divider);
+  padding: 1.25rem 1.7rem 1.5rem;
+  background: var(--surface-glass-soft);
 }
 
 .violationsSectionHeader {
@@ -341,20 +352,20 @@
 
 .violationsSectionTitle {
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: #94a3b8;
+  font-weight: 700;
+  color: var(--ruby);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 .violationsSectionCount {
   font-size: 0.75rem;
-  color: #334155;
+  color: var(--text-muted);
 }
 
 .noViolations {
   font-size: 0.85rem;
-  color: #334155;
+  color: var(--text-muted);
   text-align: center;
   padding: 1.5rem 0;
 }
@@ -362,8 +373,9 @@
 /* ── Violations table ────────────────────────────────────────────── */
 .tableWrap {
   overflow-x: auto;
-  border-radius: 10px;
-  border: 1px solid #1c1c28;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  background: var(--surface-glass);
 }
 
 .table {
@@ -373,23 +385,23 @@
 }
 
 .table thead tr {
-  background: #111118;
-  border-bottom: 1px solid #1c1c28;
+  background: var(--ruby-soft);
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .table th {
-  padding: 0.65rem 1rem;
+  padding: 0.7rem 1rem;
   text-align: left;
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #475569;
+  color: var(--ruby-dark);
   white-space: nowrap;
 }
 
 .table tbody tr {
-  border-bottom: 1px solid #1a1a24;
+  border-bottom: 1px solid var(--border-subtle);
   transition: background 0.15s;
 }
 
@@ -398,42 +410,42 @@
 }
 
 .table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--ruby-soft);
 }
 
 .table td {
-  padding: 0.75rem 1rem;
-  color: #94a3b8;
+  padding: 0.8rem 1rem;
+  color: var(--text-secondary);
   vertical-align: middle;
 }
 
 .tdName {
-  color: #cbd5e1 !important;
-  font-weight: 500;
+  color: var(--text-primary) !important;
+  font-weight: 600;
 }
 
 .tdMono {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.775rem !important;
-  color: #64748b !important;
+  color: var(--text-muted) !important;
 }
 
 /* ── Violation type badges ───────────────────────────────────────── */
 .violationTypeBadge {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.6rem;
+  padding: 0.22rem 0.65rem;
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.vtBlue   { background: rgba(14, 165, 233, 0.1);  color: #38bdf8; }
-.vtAmber  { background: rgba(245, 158, 11, 0.1);  color: #fbbf24; }
-.vtOrange { background: rgba(249, 115, 22, 0.1);  color: #fb923c; }
-.vtRed    { background: rgba(239, 68, 68, 0.1);   color: #f87171; }
-.vtPurple { background: rgba(124, 58, 237, 0.1);  color: #a78bfa; }
+.vtBlue   { background: var(--coral-tint);   color: var(--coral-dark); }
+.vtAmber  { background: var(--amber-tint);   color: var(--amber); }
+.vtOrange { background: rgba(217, 119, 6, 0.18); color: var(--amber-dark); }
+.vtRed    { background: var(--ruby-tint);    color: var(--ruby); }
+.vtPurple { background: var(--teal-tint);    color: var(--teal-dark); }
 
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {

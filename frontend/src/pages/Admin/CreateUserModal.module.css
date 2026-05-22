@@ -2,9 +2,9 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.78);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(254, 243, 237, 0.45);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,15 +14,15 @@
 
 /* ── Modal shell ─────────────────────────────────────────────────── */
 .modal {
-  background: #111118;
-  border: 1px solid #1c1c28;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
   border-radius: 18px;
   width: 100%;
   max-width: 480px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 28px 80px rgba(185, 53, 53, 0.18);
 }
 
 /* ── Header ──────────────────────────────────────────────────────── */
@@ -33,7 +33,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1.75rem 2rem 1.5rem;
-  border-bottom: 1px solid #1c1c28;
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .modalEyebrow {
@@ -41,14 +41,14 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #7c3aed;
+  color: var(--ruby);
   margin-bottom: 0.3rem;
 }
 
 .modalTitle {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -59,9 +59,9 @@
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  border: 1px solid #1c1c28;
+  border: 1px solid var(--border-glass);
   background: transparent;
-  color: #475569;
+  color: var(--text-muted);
   cursor: pointer;
   flex-shrink: 0;
   margin-top: 2px;
@@ -69,9 +69,9 @@
 }
 
 .closeBtn:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.05);
-  border-color: #2a2a38;
+  color: var(--text-primary);
+  background: var(--ruby-soft);
+  border-color: var(--border-divider-strong);
 }
 
 /* ── Body ────────────────────────────────────────────────────────── */
@@ -85,20 +85,20 @@
 /* ── Error / Success banners ─────────────────────────────────────── */
 .errorBanner {
   padding: 0.75rem 1rem;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--ruby-soft);
+  border: 1px solid var(--ruby-border);
   border-radius: 9px;
-  color: #f87171;
+  color: var(--ruby);
   font-size: 0.875rem;
   line-height: 1.5;
 }
 
 .successBanner {
   padding: 0.75rem 1rem;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: var(--emerald-soft);
+  border: 1px solid var(--emerald-border);
   border-radius: 9px;
-  color: #34d399;
+  color: var(--emerald);
   font-size: 0.875rem;
   line-height: 1.5;
 }
@@ -113,7 +113,7 @@
 .label {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--text-secondary);
   letter-spacing: 0.01em;
 }
 
@@ -121,10 +121,10 @@
 .input {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: #0b0b0f;
-  border: 1px solid #1c1c28;
+  background: var(--surface-input);
+  border: 1px solid var(--border-glass);
   border-radius: 10px;
-  color: #f1f5f9;
+  color: var(--text-primary);
   font-size: 0.9375rem;
   font-family: inherit;
   outline: none;
@@ -132,10 +132,10 @@
   box-sizing: border-box;
 }
 
-.input::placeholder { color: #2d3748; }
+.input::placeholder { color: var(--text-faint); }
 .input:focus {
-  border-color: rgba(124, 58, 237, 0.55);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: var(--ruby-border-strong);
+  box-shadow: 0 0 0 3px var(--ruby-tint);
 }
 
 /* ── Role buttons ────────────────────────────────────────────────── */
@@ -152,18 +152,18 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  border: 1px solid #1c1c28;
-  background: #0b0b0f;
-  color: #475569;
+  border: 1px solid var(--border-glass);
+  background: var(--surface-input);
+  color: var(--text-muted);
   transition: border-color 0.18s, color 0.18s, background 0.18s;
 }
 
-.roleBtn:hover { border-color: rgba(124, 58, 237, 0.4); color: #a78bfa; background: rgba(124, 58, 237, 0.06); }
+.roleBtn:hover { border-color: var(--ruby-border); color: var(--ruby); background: var(--ruby-soft); }
 
 .roleBtnActive {
-  border-color: rgba(124, 58, 237, 0.55);
-  color: #a78bfa;
-  background: rgba(124, 58, 237, 0.12);
+  border-color: var(--ruby-border-strong);
+  color: var(--ruby);
+  background: var(--ruby-tint);
 }
 
 /* ── Footer ──────────────────────────────────────────────────────── */
@@ -173,15 +173,15 @@
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 1.25rem 2rem;
-  border-top: 1px solid #1c1c28;
+  border-top: 1px solid var(--border-divider);
 }
 
 .btnCancel {
   padding: 0.7rem 1.4rem;
   border-radius: 10px;
-  border: 1px solid #1c1c28;
+  border: 1px solid var(--border-glass);
   background: transparent;
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 500;
   font-family: inherit;
@@ -190,16 +190,16 @@
 }
 
 .btnCancel:hover {
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.04);
-  border-color: #2a2a38;
+  color: var(--text-secondary);
+  background: var(--ruby-soft);
+  border-color: var(--border-divider-strong);
 }
 
 .btnCreate {
   padding: 0.7rem 1.6rem;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  background: var(--ruby-gradient);
   color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
@@ -211,7 +211,7 @@
 .btnCreate:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 6px 20px var(--ruby-border);
 }
 
 .btnCreate:disabled {
