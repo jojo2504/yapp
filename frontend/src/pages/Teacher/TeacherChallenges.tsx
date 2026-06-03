@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from '../Admin/ManageChallenges.module.css';
-import ChallengeModal from '../Admin/ChallengeModal';
-import type { Challenge, StarterCode, TestCase } from '../Admin/ManageChallenges';
+import type { Challenge, Language } from '../Admin/ManageChallenges';
+import { resolveStarter, resolveValidator, LANGUAGE_LABELS } from '../Admin/ManageChallenges';
 import { apiFetch } from '../../services/api';
 
 // ── API mapping ───────────────────────────────────────────────────────────────
@@ -12,44 +13,44 @@ interface ApiChallenge {
   description: string;
   difficulty: string;
   category: string;
-  starter_code: unknown;
+  language?: string;
+  starter_code?: unknown;
   test_cases: unknown;
+  visibility?: string;
+  group_ids?: number[];
 }
 
-const EMPTY_STARTER: StarterCode = {
-  javascript: 'function solution() {\n  // Your code here\n}',
-  python:     'def solution():\n    # Your code here\n    pass',
-  cpp:        '#include <bits/stdc++.h>\nusing namespace std;\n\nvoid solution() {\n    // Your code here\n}',
-  java:       'class Solution {\n    public void solution() {\n        // Your code here\n    }\n}',
-};
+function normalizeLanguage(raw: unknown): Language {
+  if (raw === 'javascript' || raw === 'python' || raw === 'cpp' || raw === 'java') return raw;
+  return 'python';
+}
 
 function fromApi(raw: ApiChallenge): Challenge {
+  const language = normalizeLanguage(raw.language);
   return {
     id: String(raw.id),
     title: raw.title ?? '',
     description: raw.description ?? '',
     difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Challenge['difficulty'],
     category: (raw.category ?? 'Arrays') as Challenge['category'],
-    starterCode: (raw.starter_code as StarterCode) ?? EMPTY_STARTER,
+    language,
+    starterCode: resolveStarter(raw.starter_code, language),
     testCases: Array.isArray(raw.test_cases)
-      ? (raw.test_cases as Array<{ id?: string; input: string; output: string; hidden?: boolean }>).map((tc, i) => ({
+      ? (raw.test_cases as Array<{
+          id?: string;
+          title?: string;
+          hidden?: boolean;
+          validator?: unknown;
+          validators?: unknown;
+        }>).map((tc, i) => ({
           id: tc.id ?? String(i),
-          input: tc.input ?? '',
-          output: tc.output ?? '',
+          title: tc.title ?? `Test ${i + 1}`,
           hidden: tc.hidden ?? false,
+          validator: resolveValidator(tc.validator, tc.validators, language),
         }))
       : [],
-  };
-}
-
-function toApi(c: Omit<Challenge, 'id'>): object {
-  return {
-    title: c.title,
-    description: c.description,
-    difficulty: c.difficulty,
-    category: c.category,
-    starter_code: c.starterCode,
-    test_cases: c.testCases,
+    visibility: raw.visibility === 'groups' ? 'groups' : 'everyone',
+    groupIds: (raw.group_ids ?? []).map(String),
   };
 }
 
@@ -86,11 +87,10 @@ function IconTrash() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TeacherChallenges() {
+  const navigate = useNavigate();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
-  const [modalOpen, setModalOpen]   = useState(false);
-  const [editing, setEditing]       = useState<Challenge | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function loadChallenges() {
@@ -103,33 +103,8 @@ export default function TeacherChallenges() {
 
   useEffect(() => { loadChallenges(); }, []);
 
-  function openCreate() { setEditing(null); setModalOpen(true); }
-  function openEdit(c: Challenge) { setEditing(c); setModalOpen(true); }
-
-  async function handleSave(data: Omit<Challenge, 'id'>) {
-    const currentEditing = editing;
-    setModalOpen(false);
-    setEditing(null);
-    setError('');
-    try {
-      if (currentEditing) {
-        const updated = await apiFetch<ApiChallenge>(`/api/challenges/${currentEditing.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(toApi(data)),
-        });
-        setChallenges(prev => prev.map(c => c.id === currentEditing.id ? fromApi(updated) : c));
-      } else {
-        const created = await apiFetch<ApiChallenge>('/api/challenges', {
-          method: 'POST',
-          body: JSON.stringify(toApi(data)),
-        });
-        setChallenges(prev => [...prev, fromApi(created)]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save challenge.');
-      loadChallenges();
-    }
-  }
+  function openCreate() { navigate('/teacher/challenges/new'); }
+  function openEdit(c: Challenge) { navigate(`/teacher/challenges/${c.id}/edit`); }
 
   async function handleDelete(id: string) {
     setConfirmDeleteId(null);
@@ -192,11 +167,12 @@ export default function TeacherChallenges() {
                     {c.difficulty}
                   </span>
                   <span className={styles.categoryTag}>{c.category}</span>
+                  <span className={styles.categoryTag}>{LANGUAGE_LABELS[c.language]}</span>
                 </div>
               </div>
               <p className={styles.cardDesc}>{c.description}</p>
               <p className={styles.cardMeta}>
-                {c.testCases.length} test case{c.testCases.length !== 1 ? 's' : ''}
+                {c.testCases.length} validator{c.testCases.length !== 1 ? 's' : ''}
               </p>
             </div>
 
@@ -222,14 +198,6 @@ export default function TeacherChallenges() {
         ))}
       </div>
 
-      {/* ── Modal ── */}
-      {modalOpen && (
-        <ChallengeModal
-          initial={editing}
-          onClose={() => { setModalOpen(false); setEditing(null); }}
-          onSave={handleSave}
-        />
-      )}
     </div>
   );
 }

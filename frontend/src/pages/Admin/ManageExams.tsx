@@ -22,6 +22,8 @@ export type CodingQuestion = {
 
 export type Question = MCQQuestion | CodingQuestion;
 
+export type ExamStatusOverride = '' | 'active' | 'stopped';
+
 export interface Exam {
   id: string;
   title: string;
@@ -29,6 +31,8 @@ export interface Exam {
   startDatetime: string;
   endDatetime: string;
   studentCount: number;
+  groupIds: string[];
+  statusOverride: ExamStatusOverride;
   questions: Question[];
 }
 
@@ -41,6 +45,8 @@ interface ApiExam {
   start_datetime: string;
   end_datetime: string;
   student_count: number;
+  group_ids: number[];
+  status_override: string;
   questions: unknown;
 }
 
@@ -52,24 +58,31 @@ function fromApi(raw: ApiExam): Exam {
     startDatetime: raw.start_datetime ?? '',
     endDatetime: raw.end_datetime ?? '',
     studentCount: raw.student_count ?? 0,
+    groupIds: (raw.group_ids ?? []).map(String),
+    statusOverride: (raw.status_override ?? '') as ExamStatusOverride,
     questions: Array.isArray(raw.questions) ? (raw.questions as Question[]) : [],
   };
 }
 
-function toApi(e: Omit<Exam, 'id'>): object {
+function toApi(e: Omit<Exam, 'id' | 'statusOverride'>): object {
   return {
     title: e.title,
     duration_minutes: e.durationMinutes,
     start_datetime: e.startDatetime,
     end_datetime: e.endDatetime,
     student_count: e.studentCount,
+    group_ids: e.groupIds.map(Number),
     questions: e.questions,
   };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function examStatus(exam: Exam): 'upcoming' | 'active' | 'completed' {
+type ExamStatus = 'upcoming' | 'active' | 'completed' | 'stopped';
+
+function examStatus(exam: Exam): ExamStatus {
+  if (exam.statusOverride === 'stopped') return 'stopped';
+  if (exam.statusOverride === 'active')  return 'active';
   const now   = new Date();
   const start = new Date(exam.startDatetime);
   const end   = new Date(exam.endDatetime);
@@ -120,6 +133,21 @@ function IconClock() {
     </svg>
   );
 }
+function IconStop() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="6" y="6" width="12" height="12" rx="2" />
+    </svg>
+  );
+}
+function IconRestart() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 4 23 10 17 10" />
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+    </svg>
+  );
+}
 function IconUsers() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -152,7 +180,7 @@ export default function ManageExams() {
   function openCreate() { setEditing(null); setModalOpen(true); }
   function openEdit(e: Exam) { setEditing(e); setModalOpen(true); }
 
-  async function handleSave(data: Omit<Exam, 'id'>) {
+  async function handleSave(data: Omit<Exam, 'id' | 'statusOverride'>) {
     const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);
@@ -187,8 +215,18 @@ export default function ManageExams() {
     }
   }
 
-  const STATUS_LABEL = { upcoming: 'Upcoming', active: 'Active', completed: 'Completed' };
-  const STATUS_CLASS = { upcoming: styles.statusUpcoming, active: styles.statusActive, completed: styles.statusCompleted };
+  async function handleControl(id: string, action: 'stop' | 'restart') {
+    setError('');
+    try {
+      const updated = await apiFetch<ApiExam>(`/api/exams/${id}/${action}`, { method: 'POST' });
+      setExams(prev => prev.map(e => e.id === id ? fromApi(updated) : e));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to ${action} exam.`);
+    }
+  }
+
+  const STATUS_LABEL: Record<ExamStatus, string> = { upcoming: 'Upcoming', active: 'Active', completed: 'Completed', stopped: 'Stopped' };
+  const STATUS_CLASS: Record<ExamStatus, string> = { upcoming: styles.statusUpcoming, active: styles.statusActive, completed: styles.statusCompleted, stopped: styles.statusStopped };
 
   if (loading) return (
     <div className={styles.page}>
@@ -276,6 +314,16 @@ export default function ManageExams() {
                     </div>
                   ) : (
                     <>
+                      {status === 'active' && (
+                        <button className={styles.btnStop} onClick={() => handleControl(exam.id, 'stop')}>
+                          <IconStop /> Stop
+                        </button>
+                      )}
+                      {(status === 'completed' || status === 'stopped') && (
+                        <button className={styles.btnRestart} onClick={() => handleControl(exam.id, 'restart')}>
+                          <IconRestart /> Restart
+                        </button>
+                      )}
                       <button className={styles.btnEdit} onClick={() => openEdit(exam)}>
                         <IconEdit /> Edit
                       </button>

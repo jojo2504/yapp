@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import CodeEditor from '../../components/UI/CodeEditor';
 import styles from './LessonPage.module.css';
 import { apiFetch } from '../../services/api';
+import { resolveStarter } from '../Admin/ManageChallenges';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,7 +13,16 @@ interface ApiChallenge {
   description: string;
   difficulty: string;
   category: string;
+  language?: string;
+  starter_code?: unknown;
   test_cases: unknown;
+}
+
+type EditorLang = 'javascript' | 'python' | 'cpp' | 'java';
+
+function normalizeLanguage(raw: unknown): EditorLang {
+  if (raw === 'javascript' || raw === 'python' || raw === 'cpp' || raw === 'java') return raw;
+  return 'python';
 }
 
 interface ApiCourse {
@@ -23,8 +33,8 @@ interface ApiCourse {
 
 interface TestCase {
   id: string;
-  input: string;
-  output: string;
+  title: string;
+  hidden: boolean;
 }
 
 interface Challenge {
@@ -34,6 +44,8 @@ interface Challenge {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   category: string;
   testCases: TestCase[];
+  language: EditorLang;
+  starterCode: string;
 }
 
 interface Course {
@@ -81,8 +93,14 @@ export default function LessonPage() {
             ? foundChallenge.difficulty : 'Easy') as Challenge['difficulty'],
           category: foundChallenge.category ?? '',
           testCases: Array.isArray(foundChallenge.test_cases)
-            ? (foundChallenge.test_cases as TestCase[])
+            ? (foundChallenge.test_cases as Array<{ id?: string; title?: string; hidden?: boolean }>).map((tc, i) => ({
+                id: tc.id ?? String(i),
+                title: tc.title ?? `Test ${i + 1}`,
+                hidden: tc.hidden ?? false,
+              }))
             : [],
+          language: normalizeLanguage(foundChallenge.language),
+          starterCode: resolveStarter(foundChallenge.starter_code, normalizeLanguage(foundChallenge.language)),
         });
       })
       .catch(e => setError(e.message))
@@ -135,17 +153,16 @@ export default function LessonPage() {
           <p className={styles.description}>{challenge.description}</p>
         </section>
 
-        {/* Examples */}
-        {challenge.testCases.length > 0 && (
+        {/* Public validators (titles only) */}
+        {challenge.testCases.some(tc => !tc.hidden) && (
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Examples</h2>
+            <h2 className={styles.sectionTitle}>Public validators</h2>
             <div className={styles.exampleList}>
-              {challenge.testCases.map((tc, i) => (
+              {challenge.testCases.filter(tc => !tc.hidden).map((tc, i) => (
                 <div key={tc.id} className={styles.exampleBlock}>
-                  <p className={styles.exampleLabel}>Example {i + 1}</p>
-                  <pre className={styles.examplePre}>
-                    <code>{`Input:  ${tc.input}\nOutput: ${tc.output}`}</code>
-                  </pre>
+                  <p className={styles.exampleLabel}>
+                    {tc.title?.trim() ? tc.title : `Validator ${i + 1}`}
+                  </p>
                 </div>
               ))}
             </div>
@@ -156,7 +173,7 @@ export default function LessonPage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Solution</h2>
           <div className={styles.editorWrapper}>
-            <CodeEditor examId={challenge.id} studentId="student" />
+            <CodeEditor language={challenge.language} starterCode={challenge.starterCode} />
           </div>
         </section>
 

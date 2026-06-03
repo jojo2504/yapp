@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Group } from './ManageGroups';
 import styles from './GroupModal.module.css';
+import { apiFetch } from '../../services/api';
 
 // ── Course data for the picker ─────────────────────────────────────────────
 
@@ -10,6 +11,22 @@ interface PickerCourse {
 }
 
 const ALL_COURSES: PickerCourse[] = [];
+
+// ── Student directory types ────────────────────────────────────────────────
+
+interface ApiStudent {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface StudentOption {
+  id: string;
+  name: string;
+  email: string;
+}
+
+type AddMode = 'email' | 'select';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +50,14 @@ function IconPlus() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function IconSearch() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   );
 }
@@ -74,6 +99,12 @@ export default function GroupModal({ initial, onClose, onSave }: Props) {
   const [emailInput, setEmailInput] = useState('');
   const [emailError, setEmailError] = useState('');
   const emailInputRef = useRef<HTMLInputElement>(null);
+
+  const [addMode, setAddMode] = useState<AddMode>('email');
+  const [students, setStudents] = useState<StudentOption[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsLoaded, setStudentsLoaded] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
 
   const handleEsc = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
@@ -117,6 +148,42 @@ export default function GroupModal({ initial, onClose, onSave }: Props) {
       addEmail();
     }
   }
+
+  // ── Student picker helpers ─────────────────────────────────────────────────
+
+  // Lazy-load the student directory the first time the picker is opened.
+  useEffect(() => {
+    if (addMode !== 'select' || studentsLoaded) return;
+    let cancelled = false;
+    setStudentsLoading(true);
+    apiFetch<ApiStudent[]>('/api/students')
+      .then(data => {
+        if (cancelled) return;
+        setStudents(data.map(s => ({
+          id: String(s.id),
+          name: s.name ?? '',
+          email: (s.email ?? '').toLowerCase(),
+        })));
+      })
+      .catch(() => { if (!cancelled) setStudents([]); })
+      .finally(() => { if (!cancelled) { setStudentsLoading(false); setStudentsLoaded(true); } });
+    return () => { cancelled = true; };
+  }, [addMode, studentsLoaded]);
+
+  function toggleStudent(email: string) {
+    setForm(prev => ({
+      ...prev,
+      studentEmails: prev.studentEmails.includes(email)
+        ? prev.studentEmails.filter(e => e !== email)
+        : [...prev.studentEmails, email],
+    }));
+  }
+
+  const filteredStudents = students.filter(s => {
+    const q = studentSearch.trim().toLowerCase();
+    if (!q) return true;
+    return s.name.toLowerCase().includes(q) || s.email.includes(q);
+  });
 
   // ── Course picker helpers ──────────────────────────────────────────────────
 
@@ -193,35 +260,107 @@ export default function GroupModal({ initial, onClose, onSave }: Props) {
             />
           </div>
 
-          {/* Student emails */}
+          {/* Students */}
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="gr-email">
-              Student Emails
+            <label className={styles.label}>
+              Students
               <span className={styles.labelCount}>{form.studentEmails.length} added</span>
             </label>
 
-            <div className={styles.emailInputRow}>
-              <input
-                id="gr-email"
-                ref={emailInputRef}
-                type="email"
-                className={styles.input}
-                placeholder="student@example.com"
-                value={emailInput}
-                onChange={e => { setEmailInput(e.target.value); setEmailError(''); }}
-                onKeyDown={handleEmailKeyDown}
-              />
+            {/* Mode toggle */}
+            <div className={styles.modeToggle}>
               <button
                 type="button"
-                className={styles.btnAddEmail}
-                onClick={addEmail}
+                className={`${styles.modeBtn} ${addMode === 'email' ? styles.modeBtnActive : ''}`}
+                onClick={() => setAddMode('email')}
               >
-                <IconPlus /> Add
+                Add by email
+              </button>
+              <button
+                type="button"
+                className={`${styles.modeBtn} ${addMode === 'select' ? styles.modeBtnActive : ''}`}
+                onClick={() => setAddMode('select')}
+              >
+                Select students
               </button>
             </div>
 
-            {emailError && <p className={styles.fieldError}>{emailError}</p>}
+            {addMode === 'email' ? (
+              <>
+                <div className={styles.emailInputRow}>
+                  <input
+                    id="gr-email"
+                    ref={emailInputRef}
+                    type="email"
+                    className={styles.input}
+                    placeholder="student@example.com"
+                    value={emailInput}
+                    onChange={e => { setEmailInput(e.target.value); setEmailError(''); }}
+                    onKeyDown={handleEmailKeyDown}
+                  />
+                  <button
+                    type="button"
+                    className={styles.btnAddEmail}
+                    onClick={addEmail}
+                  >
+                    <IconPlus /> Add
+                  </button>
+                </div>
+                {emailError && <p className={styles.fieldError}>{emailError}</p>}
+                {form.studentEmails.length === 0 && (
+                  <p className={styles.emailHint}>
+                    Type an email and press Enter or click Add.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <div className={styles.searchRow}>
+                  <span className={styles.searchIcon}><IconSearch /></span>
+                  <input
+                    type="text"
+                    className={styles.searchInput}
+                    placeholder="Search students by name or email…"
+                    value={studentSearch}
+                    onChange={e => setStudentSearch(e.target.value)}
+                  />
+                </div>
 
+                {studentsLoading ? (
+                  <p className={styles.emailHint}>Loading students…</p>
+                ) : students.length === 0 ? (
+                  <p className={styles.emailHint}>No students found.</p>
+                ) : (
+                  <div className={styles.studentList}>
+                    {filteredStudents.length === 0 && (
+                      <p className={styles.emailHint}>No students match “{studentSearch}”.</p>
+                    )}
+                    {filteredStudents.map(student => {
+                      const checked = form.studentEmails.includes(student.email);
+                      return (
+                        <label
+                          key={student.id}
+                          className={`${styles.studentItem} ${checked ? styles.studentItemChecked : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            className={styles.checkbox}
+                            checked={checked}
+                            onChange={() => toggleStudent(student.email)}
+                          />
+                          <span className={styles.studentInfo}>
+                            <span className={styles.studentName}>{student.name}</span>
+                            <span className={styles.studentEmail}>{student.email}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Shared list of added students (both modes feed this) */}
             {form.studentEmails.length > 0 && (
               <div className={styles.emailTags}>
                 {form.studentEmails.map(email => (
@@ -238,12 +377,6 @@ export default function GroupModal({ initial, onClose, onSave }: Props) {
                   </span>
                 ))}
               </div>
-            )}
-
-            {form.studentEmails.length === 0 && (
-              <p className={styles.emailHint}>
-                Type an email and press Enter or click Add.
-              </p>
             )}
           </div>
 

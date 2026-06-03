@@ -37,14 +37,6 @@ const QUICK_ACCESS = [
     accent: 'blue',
     cta: 'Explore courses',
   },
-  {
-    to: '/exam/demo-exam',
-    label: 'Exam Sessions',
-    desc: 'Review upcoming exams or practice with past papers.',
-    icon: <IconClip />,
-    accent: 'green',
-    cta: 'View sessions',
-  },
 ];
 
 // ── Icons ────────────────────────────────────────────────────────────────────

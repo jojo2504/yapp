@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import styles from './Navbar.module.css';
 import { LS } from '../../constants/storage';
+import yappLogo from '../../assets/Logo/YAPPlogo.png';
 
 const NAV_LINKS = [
   { to: '/challenges',  label: 'Challenges'  },
   { to: '/courses',     label: 'Courses'     },
-  { to: '/exam',        label: 'Exams'       },
+  { to: '/exam',        label: 'Examens'     },
   { to: '/playground',  label: 'Playground'  },
 ];
 
@@ -14,8 +15,6 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Read directly from localStorage so every re-render (triggered by route
-  // changes via NavLink's location subscription) reflects the current auth state.
   const isLoggedIn = Boolean(localStorage.getItem(LS.TOKEN));
   const storedUser = localStorage.getItem(LS.USER);
   const userRole: string = storedUser ? (JSON.parse(storedUser).role ?? '') : '';
@@ -42,7 +41,8 @@ export default function Navbar() {
       <nav className={styles.navbar}>
         {/* Logo */}
         <Link to={logoTo} className={styles.logo}>
-          Ya<span>pp</span>
+          <img src={yappLogo} alt="YAPP" className={styles.logoImg} />
+          <span className={styles.logoText}>APP</span>
         </Link>
 
         {/* Center links */}
@@ -60,7 +60,7 @@ export default function Navbar() {
         <div className={styles.actions}>
           {isLoggedIn ? (
             <>
-              <Link to={dashboardTo} className={styles.btnLogin}>
+              <Link to={dashboardTo} className={styles.btnDashboard}>
                 Dashboard
               </Link>
               <button className={styles.btnLogout} onClick={handleLogout}>
@@ -69,10 +69,10 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className={styles.btnLogin}>
+              <Link to="/login" className={styles.btnDashboard}>
                 Login
               </Link>
-              <Link to="/signup" className={styles.btnSignUp}>
+              <Link to="/signup" className={styles.btnLogout}>
                 Sign Up
               </Link>
             </>
@@ -108,7 +108,7 @@ export default function Navbar() {
         <div className={styles.drawerActions}>
           {isLoggedIn ? (
             <>
-              <Link to={dashboardTo} className={styles.btnLogin} onClick={() => setOpen(false)}>
+              <Link to={dashboardTo} className={styles.btnDashboard} onClick={() => setOpen(false)}>
                 Dashboard
               </Link>
               <button className={styles.btnLogout} onClick={handleLogout}>
@@ -117,10 +117,10 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className={styles.btnLogin} onClick={() => setOpen(false)}>
+              <Link to="/login" className={styles.btnDashboard} onClick={() => setOpen(false)}>
                 Login
               </Link>
-              <Link to="/signup" className={styles.btnSignUp} onClick={() => setOpen(false)}>
+              <Link to="/signup" className={styles.btnLogout} onClick={() => setOpen(false)}>
                 Sign Up
               </Link>
             </>

@@ -1,0 +1,118 @@
+/* ══════════════════════════════════════════════════════════════════
+   YAPP Theme — Ruby / Peachy Glassmorphism
+   Single source of truth for the post-rebrand DA.
+   Mirrors Landing + Login palettes; all pages should consume these.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Page surface ────────────────────────────────────────────── */
+  --bg-page:
+    radial-gradient(ellipse at 70% 30%, #fde4d6 0%, #FFEEE3 45%, #fdfbfa 100%);
+  --bg-page-flat: #fdfbfa;
+  --bg-page-tinted: #fef3ed;
+
+  /* ── Text ─────────────────────────────────────────────────────── */
+  --text-primary: #2a2020;
+  --text-secondary: #5c4a4a;
+  --text-muted: #8a7070;
+  --text-faint: #b89a9a;
+
+  /* ── Glass surfaces ──────────────────────────────────────────── */
+  --surface-glass: rgba(255, 255, 255, 0.55);
+  --surface-glass-strong: rgba(255, 255, 255, 0.7);
+  --surface-glass-soft: rgba(255, 255, 255, 0.4);
+  --surface-input: rgba(255, 255, 255, 0.5);
+  --surface-input-hover: rgba(255, 255, 255, 0.7);
+  --surface-input-focus: rgba(255, 255, 255, 0.9);
+
+  /* ── Borders / dividers ──────────────────────────────────────── */
+  --border-glass: rgba(255, 255, 255, 0.65);
+  --border-input: rgba(255, 255, 255, 0.7);
+  --border-divider: rgba(192, 86, 74, 0.15);
+  --border-divider-strong: rgba(192, 86, 74, 0.25);
+  --border-subtle: rgba(192, 86, 74, 0.1);
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
+  --shadow-glass-sm: 0 4px 14px rgba(185, 53, 53, 0.06);
+  --shadow-glass-md: 0 8px 24px rgba(185, 53, 53, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-glass-lg: 0 16px 40px rgba(185, 53, 53, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-ruby: 0 8px 24px rgba(185, 53, 53, 0.25);
+  --shadow-ruby-hover: 0 12px 32px rgba(185, 53, 53, 0.35);
+
+  /* ── Blur stacks ─────────────────────────────────────────────── */
+  --blur-sm: blur(14px) saturate(160%);
+  --blur-md: blur(20px) saturate(160%);
+  --blur-lg: blur(24px) saturate(160%);
+
+  /* ── Radii ───────────────────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-pill: 9999px;
+
+  /* ── Accents — Ruby (primary) ────────────────────────────────── */
+  --ruby: #c94a3a;
+  --ruby-dark: #b83535;
+  --ruby-darker: #a02828;
+  --ruby-soft: rgba(201, 74, 58, 0.08);
+  --ruby-tint: rgba(201, 74, 58, 0.12);
+  --ruby-tint-strong: rgba(201, 74, 58, 0.18);
+  --ruby-border: rgba(201, 74, 58, 0.35);
+  --ruby-border-strong: rgba(201, 74, 58, 0.55);
+  --ruby-gradient: linear-gradient(135deg, #c94a3a 0%, #b83535 100%);
+  --ruby-glow: 0 8px 24px rgba(185, 53, 53, 0.3);
+
+  /* ── Accents — Coral (secondary CTA) ─────────────────────────── */
+  --coral: #ff6b35;
+  --coral-dark: #d9572b;
+  --coral-soft: rgba(255, 107, 53, 0.08);
+  --coral-tint: rgba(255, 107, 53, 0.14);
+  --coral-border: rgba(255, 107, 53, 0.35);
+  --coral-gradient: linear-gradient(90deg, #e91e63 0%, #ff6b35 100%);
+
+  /* ── Accents — Pink (form CTA) ───────────────────────────────── */
+  --pink: #e91e63;
+  --pink-dark: #c2185b;
+  --pink-soft: rgba(233, 30, 99, 0.08);
+  --pink-tint: rgba(233, 30, 99, 0.12);
+  --pink-border: rgba(233, 30, 99, 0.35);
+
+  /* ── Accents — Emerald (success) ─────────────────────────────── */
+  --emerald: #059669;
+  --emerald-dark: #047857;
+  --emerald-soft: rgba(5, 150, 105, 0.08);
+  --emerald-tint: rgba(5, 150, 105, 0.12);
+  --emerald-border: rgba(5, 150, 105, 0.35);
+
+  /* ── Accents — Teal (teacher / secondary) ────────────────────── */
+  --teal: #0d9488;
+  --teal-dark: #0b7e72;
+  --teal-soft: rgba(13, 148, 136, 0.08);
+  --teal-tint: rgba(13, 148, 136, 0.12);
+  --teal-border: rgba(13, 148, 136, 0.35);
+
+  /* ── Accents — Amber (warning / accent) ──────────────────────── */
+  --amber: #d97706;
+  --amber-dark: #b45309;
+  --amber-soft: rgba(217, 119, 6, 0.08);
+  --amber-tint: rgba(217, 119, 6, 0.14);
+  --amber-border: rgba(217, 119, 6, 0.35);
+
+  /* ── Verdict accents (judge results) ─────────────────────────── */
+  --verdict-accepted: #059669;
+  --verdict-wrong: #c94a3a;
+  --verdict-tle: #d97706;
+  --verdict-error: #b83535;
+  --verdict-pending: #8a7070;
+
+  /* ── Code / mono ─────────────────────────────────────────────── */
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --code-bg: rgba(255, 255, 255, 0.55);
+  --code-text: #3a2828;
+  --code-border: rgba(255, 255, 255, 0.6);
+
+  /* ── Layout chrome ───────────────────────────────────────────── */
+  --navbar-height: 64px;
+}

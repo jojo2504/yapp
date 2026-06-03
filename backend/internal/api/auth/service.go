@@ -182,7 +182,7 @@ func (s *Service) CreateUserAsAdmin(req AdminCreateUserRequest) (*AuthResponse, 
 func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 	var u user.User
 	if err := s.db.Where("email = ?", req.Email).First(&u).Error; err != nil {
-		return nil, errors.New("invalid email or password")
+		return nil, errors.New("invalid email")
 	}
 
 	if !u.IsActive {
@@ -190,11 +190,11 @@ func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 	}
 
 	if u.PasswordHash == nil {
-		return nil, errors.New("invalid email or password")
+		return nil, errors.New("invalid password")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*u.PasswordHash), []byte(req.Password)); err != nil {
-		return nil, errors.New("invalid email or password")
+		return nil, errors.New("invalid password")
 	}
 
 	return s.generateAuthResponse(&u)

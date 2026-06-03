@@ -51,7 +51,7 @@ func SetupRouter(db *gorm.DB, redis redisService.RedisService) *gin.Engine {
 	auth.RegisterRoutes(r, db)
 	problems.RegisterRoutes(r, db)
 	submit.RegisterRoutes(r, redis, db)
-	judge.RegisterRoutes(r, db)
+	judge.RegisterRoutes(r, db, redis)
 	challenges.RegisterRoutes(r, db, redis)
 	groups.RegisterRoutes(r, db)
 	courses.RegisterRoutes(r, db)

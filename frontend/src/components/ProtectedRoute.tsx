@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { LS } from '../constants/storage';
+import ExamScheduleWatcher from './ExamScheduleWatcher';
 
 function getRole(): string {
   try {
@@ -12,7 +13,13 @@ function getRole(): string {
 /** Redirects to /login if no token is present. */
 export default function ProtectedRoute() {
   const isAuthenticated = Boolean(localStorage.getItem(LS.TOKEN));
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return (
+    <>
+      <ExamScheduleWatcher />
+      <Outlet />
+    </>
+  );
 }
 
 /**

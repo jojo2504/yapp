@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Layout/Navbar';
 import ProtectedRoute, { RoleGuard } from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -22,6 +22,7 @@ import ProfilePage from './pages/Profile/ProfilePage';
 
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import ManageChallenges from './pages/Admin/ManageChallenges';
+import CreateChallenge from './pages/Admin/CreateChallenge';
 import ManageCourses from './pages/Admin/ManageCourses';
 import ManageExams from './pages/Admin/ManageExams';
 import ManageGroups from './pages/Admin/ManageGroups';
@@ -34,11 +35,17 @@ import TeacherExams from './pages/Teacher/TeacherExams';
 import TeacherGroups from './pages/Teacher/TeacherGroups';
 import Playground from './pages/Playground/Playground';
 
+function ConditionalNavbar() {
+  const location = useLocation();
+  if (location.pathname === '/') return null;
+  return <Navbar />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
     <BrowserRouter>
-      <Navbar />
+      <ConditionalNavbar />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
@@ -65,6 +72,8 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/challenges" element={<ManageChallenges />} />
+              <Route path="/admin/challenges/new" element={<CreateChallenge />} />
+              <Route path="/admin/challenges/:id/edit" element={<CreateChallenge />} />
               <Route path="/admin/courses" element={<ManageCourses />} />
               <Route path="/admin/exams" element={<ManageExams />} />
               <Route path="/admin/groups" element={<ManageGroups />} />
@@ -76,6 +85,8 @@ export default function App() {
             <Route element={<TeacherLayout />}>
               <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
               <Route path="/teacher/challenges" element={<TeacherChallenges />} />
+              <Route path="/teacher/challenges/new" element={<CreateChallenge />} />
+              <Route path="/teacher/challenges/:id/edit" element={<CreateChallenge />} />
               <Route path="/teacher/courses" element={<TeacherCourses />} />
               <Route path="/teacher/exams" element={<TeacherExams />} />
               <Route path="/teacher/groups" element={<TeacherGroups />} />

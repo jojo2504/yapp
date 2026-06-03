@@ -178,10 +178,16 @@ pub struct TestCase {
 }
 
 /// A test case embedded inline in the Redis submission message for challenge runs.
+///
+/// `validator` is the teacher-written program in the same language as the
+/// student's submission. The judge concatenates the student's source with the
+/// validator (or pairs them as two classes for Java) and runs the result. The
+/// validator picks its own inputs, calls the student's function, and exits 0
+/// on success or non-zero on failure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InlineTestCase {
-    pub input: String,
-    pub expected: String,
+    pub title: String,
     pub hidden: bool,
     pub position: i32,
+    pub validator: String,
 }

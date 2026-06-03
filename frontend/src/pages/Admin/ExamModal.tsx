@@ -1,16 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Exam, MCQQuestion, CodingQuestion, Question } from './ManageExams';
 import styles from './ExamModal.module.css';
+import { apiFetch } from '../../services/api';
+
+// ── Group types ─────────────────────────────────────────────────────────────
+
+interface ApiGroup {
+  id: number;
+  name: string;
+  students: string[];
+}
+
+interface GroupOption {
+  id: string;
+  name: string;
+  studentCount: number;
+}
+
+interface ApiChallenge {
+  id: number;
+  title: string;
+}
+
+interface ChallengeOption {
+  id: string;
+  title: string;
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const AVAILABLE_CHALLENGES: { id: string; title: string }[] = [];
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ExamForm = Omit<Exam, 'id' | 'studentCount'>;
+type ExamForm = Omit<Exam, 'id' | 'studentCount' | 'statusOverride'>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -41,6 +64,15 @@ function IconSmallX() {
   );
 }
 
+function IconUsers() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
 // ── Empty form factory ────────────────────────────────────────────────────────
 
 function emptyForm(): ExamForm {
@@ -49,6 +81,7 @@ function emptyForm(): ExamForm {
     durationMinutes: 60,
     startDatetime: '',
     endDatetime: '',
+    groupIds: [],
     questions: [],
   };
 }
@@ -59,6 +92,7 @@ function formFromExam(exam: Exam): ExamForm {
     durationMinutes: exam.durationMinutes,
     startDatetime:   toDatetimeLocal(exam.startDatetime),
     endDatetime:     toDatetimeLocal(exam.endDatetime),
+    groupIds:        [...exam.groupIds],
     questions:       exam.questions.map(q => ({ ...q })),
   };
 }
@@ -135,11 +169,13 @@ function MCQEditor({ q, index, onChange, onRemove }: MCQEditorProps) {
 interface CodingEditorProps {
   q: CodingQuestion;
   index: number;
+  challenges: ChallengeOption[];
+  challengesLoading: boolean;
   onChange: (q: CodingQuestion) => void;
   onRemove: () => void;
 }
 
-function CodingEditor({ q, index, onChange, onRemove }: CodingEditorProps) {
+function CodingEditor({ q, index, challenges, challengesLoading, onChange, onRemove }: CodingEditorProps) {
   return (
     <div className={styles.questionCard}>
       <div className={styles.questionCardHeader}>
@@ -159,12 +195,22 @@ function CodingEditor({ q, index, onChange, onRemove }: CodingEditorProps) {
             className={styles.select}
             value={q.challengeId}
             onChange={e => {
-              const challenge = AVAILABLE_CHALLENGES.find(c => c.id === e.target.value);
+              const challenge = challenges.find(c => c.id === e.target.value);
               onChange({ ...q, challengeId: e.target.value, challengeTitle: challenge?.title ?? '' });
             }}
           >
-            <option value="">— Select a challenge —</option>
-            {AVAILABLE_CHALLENGES.map(c => (
+            <option value="">
+              {challengesLoading
+                ? 'Loading challenges…'
+                : challenges.length === 0
+                  ? '— No challenges available —'
+                  : '— Select a challenge —'}
+            </option>
+            {/* Keep the linked challenge selectable even if it's not in the list. */}
+            {q.challengeId && !challenges.some(c => c.id === q.challengeId) && (
+              <option value={q.challengeId}>{q.challengeTitle || `Challenge ${q.challengeId}`}</option>
+            )}
+            {challenges.map(c => (
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
@@ -179,13 +225,17 @@ function CodingEditor({ q, index, onChange, onRemove }: CodingEditorProps) {
 interface Props {
   initial: Exam | null;
   onClose: () => void;
-  onSave: (data: Omit<Exam, 'id'>) => void;
+  onSave: (data: Omit<Exam, 'id' | 'statusOverride'>) => void;
 }
 
 export default function ExamModal({ initial, onClose, onSave }: Props) {
   const [form, setForm]       = useState<ExamForm>(initial ? formFromExam(initial) : emptyForm());
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
+  const [groups, setGroups]         = useState<GroupOption[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [challenges, setChallenges] = useState<ChallengeOption[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
 
   const handleEsc = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
@@ -199,6 +249,45 @@ export default function ExamModal({ initial, onClose, onSave }: Props) {
       document.body.style.overflow = '';
     };
   }, [handleEsc]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setGroupsLoading(true);
+    apiFetch<ApiGroup[]>('/api/groups')
+      .then(data => {
+        if (cancelled) return;
+        setGroups(data.map(g => ({
+          id: String(g.id),
+          name: g.name ?? '',
+          studentCount: (g.students ?? []).length,
+        })));
+      })
+      .catch(() => { if (!cancelled) setGroups([]); })
+      .finally(() => { if (!cancelled) setGroupsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChallengesLoading(true);
+    apiFetch<ApiChallenge[]>('/api/challenges')
+      .then(data => {
+        if (cancelled) return;
+        setChallenges(data.map(c => ({ id: String(c.id), title: c.title ?? `Challenge ${c.id}` })));
+      })
+      .catch(() => { if (!cancelled) setChallenges([]); })
+      .finally(() => { if (!cancelled) setChallengesLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  function toggleGroup(id: string) {
+    setForm(prev => ({
+      ...prev,
+      groupIds: prev.groupIds.includes(id)
+        ? prev.groupIds.filter(g => g !== id)
+        : [...prev.groupIds, id],
+    }));
+  }
 
   // ── Question helpers ─────────────────────────────────────────────────────────
 
@@ -247,18 +336,11 @@ export default function ExamModal({ initial, onClose, onSave }: Props) {
     }
     setError('');
     setLoading(true);
-    try {
-      const url    = initial ? `/api/exams/${initial.id}` : '/api/exams';
-      const method = initial ? 'PUT' : 'POST';
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ...(initial ? { id: initial.id } : {}) }),
-      });
-    } catch { /* optimistic */ } finally {
-      setLoading(false);
-      onSave({ ...form, studentCount: initial?.studentCount ?? 0 });
-    }
+    // The actual API call (with auth) happens in the parent's onSave handler.
+    const studentCount = groups
+      .filter(g => form.groupIds.includes(g.id))
+      .reduce((sum, g) => sum + g.studentCount, 0);
+    onSave({ ...form, studentCount });
   }
 
   const isEditing  = Boolean(initial);
@@ -342,6 +424,51 @@ export default function ExamModal({ initial, onClose, onSave }: Props) {
             </div>
           </div>
 
+          {/* Groups ── */}
+          <div className={styles.groupsSection}>
+            <div className={styles.groupsSectionHeader}>
+              <span className={styles.label}>Assigned Groups</span>
+              {form.groupIds.length > 0 && (
+                <span className={styles.questionCount}>{form.groupIds.length} selected</span>
+              )}
+            </div>
+            <p className={styles.groupsHint}>
+              Select one or more groups whose students will sit this exam.
+            </p>
+
+            {groupsLoading ? (
+              <div className={styles.emptyQuestions}>Loading groups…</div>
+            ) : groups.length === 0 ? (
+              <div className={styles.emptyQuestions}>
+                No groups exist yet. Create a group first to assign students.
+              </div>
+            ) : (
+              <div className={styles.groupChecklist}>
+                {groups.map(group => {
+                  const checked = form.groupIds.includes(group.id);
+                  return (
+                    <label
+                      key={group.id}
+                      className={`${styles.groupItem} ${checked ? styles.groupItemChecked : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className={styles.groupCheckbox}
+                        checked={checked}
+                        onChange={() => toggleGroup(group.id)}
+                      />
+                      <span className={styles.groupIcon}><IconUsers /></span>
+                      <span className={styles.groupName}>{group.name}</span>
+                      <span className={styles.groupStudentCount}>
+                        {group.studentCount} student{group.studentCount !== 1 ? 's' : ''}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Questions ── */}
           <div className={styles.questionsSection}>
             <div className={styles.questionsSectionHeader}>
@@ -386,6 +513,8 @@ export default function ExamModal({ initial, onClose, onSave }: Props) {
                     key={q.id}
                     q={q}
                     index={i}
+                    challenges={challenges}
+                    challengesLoading={challengesLoading}
                     onChange={updated => updateQuestion(q.id, updated)}
                     onRemove={() => removeQuestion(q.id)}
                   />

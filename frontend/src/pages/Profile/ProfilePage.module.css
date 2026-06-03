@@ -1,8 +1,10 @@
-/* ── Page ─────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   Profile — Ruby / Peachy DA
+   ══════════════════════════════════════════════════════════════════ */
+
 .page {
   min-height: 100vh;
-  background-color: #0b0b0f;
-  padding-top: 64px;
+  padding-top: var(--navbar-height);
 }
 
 .container {
@@ -17,42 +19,45 @@
 /* ── Header ──────────────────────────────────────────────────────── */
 .header {
   padding-bottom: 2.25rem;
-  border-bottom: 1px solid #1c1c28;
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .headerLabel {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #7c3aed;
+  letter-spacing: 0.12em;
+  color: var(--ruby);
   margin-bottom: 0.3rem;
 }
 
 .headerTitle {
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 800;
-  color: #f1f5f9;
+  color: var(--text-primary);
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
 
 /* ── Avatar + info card ──────────────────────────────────────────── */
 .profileCard {
-  background: #111118;
-  border: 1px solid #1c1c28;
-  border-radius: 18px;
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
   padding: 2.25rem 2rem;
   display: flex;
   align-items: center;
   gap: 2rem;
+  box-shadow: var(--shadow-glass-md);
 }
 
 .avatar {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  background: var(--ruby-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,6 +66,7 @@
   color: #fff;
   flex-shrink: 0;
   letter-spacing: -0.03em;
+  box-shadow: var(--shadow-ruby);
 }
 
 .profileInfo {
@@ -72,41 +78,44 @@
 .profileName {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .profileRole {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.7rem;
-  border-radius: 9999px;
+  padding: 0.22rem 0.75rem;
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  background: rgba(124, 58, 237, 0.1);
-  color: #a78bfa;
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: var(--ruby-tint);
+  color: var(--ruby);
+  border: 1px solid var(--ruby-border);
   align-self: flex-start;
 }
 
 /* ── Details section ─────────────────────────────────────────────── */
 .detailsCard {
-  background: #111118;
-  border: 1px solid #1c1c28;
-  border-radius: 18px;
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
   overflow: hidden;
+  box-shadow: var(--shadow-glass-md);
 }
 
 .detailsTitle {
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #334155;
+  letter-spacing: 0.1em;
+  color: var(--ruby);
   padding: 1.25rem 2rem;
-  border-bottom: 1px solid #1c1c28;
+  border-bottom: 1px solid var(--border-divider);
 }
 
 .detailRow {
@@ -118,19 +127,19 @@
 }
 
 .detailRow + .detailRow {
-  border-top: 1px solid #1c1c28;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .detailKey {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .detailVal {
   font-size: 0.875rem;
-  color: #e2e8f0;
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: 600;
   text-align: right;
 }
 

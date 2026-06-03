@@ -1,17 +1,41 @@
 package submission
 
 import (
+	"fmt"
+
 	"backend/api/types/base"
 	"backend/api/types/problem"
 )
 
+// PlaygroundIDBase is the lower bound for playground submission IDs. Any
+// submission ID at or above this value is a playground run that lives only in
+// Redis (no DB row). DB submissions use BIGSERIAL starting at 1, so this offset
+// guarantees no collision in practice.
+const PlaygroundIDBase int64 = 1_000_000_000_000_000
+
+// IsPlaygroundID reports whether the given submission ID refers to a
+// playground run (Redis-backed) rather than a persisted submission.
+func IsPlaygroundID(id int64) bool { return id >= PlaygroundIDBase }
+
+// PlaygroundResultKey returns the Redis key holding the latest result JSON
+// for a playground submission.
+func PlaygroundResultKey(id int64) string {
+    return fmt.Sprintf("playground:result:%d", id)
+}
+
 // InlineTestCase carries a single test case embedded in the Redis submission
 // message for challenge submissions. Not stored in the DB (gorm:"-").
+//
+// Validator is a complete teacher-written program in the same language as the
+// student's submission. The judge concatenates the student's source with
+// Validator (or compiles them as two classes for Java) and runs the result —
+// the validator decides its own inputs, calls the student's function, and
+// exits 0 on success or non-zero on failure.
 type InlineTestCase struct {
-	Input    string `json:"input"`
-	Expected string `json:"expected"`
-	Hidden   bool   `json:"hidden"`
-	Position int    `json:"position"`
+	Title     string `json:"title"`
+	Hidden    bool   `json:"hidden"`
+	Position  int    `json:"position"`
+	Validator string `json:"validator"`
 }
 
 type Submission struct {

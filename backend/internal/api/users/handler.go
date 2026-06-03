@@ -29,6 +29,20 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+// ListStudents returns the student directory used by group/exam pickers.
+// Accessible to Teachers and Admins; supports an optional ?search= filter.
+func (h *Handler) ListStudents(c *gin.Context) {
+	students, err := h.service.ListUsers(ListFilter{
+		Search: c.Query("search"),
+		Role:   "Student",
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch students"})
+		return
+	}
+	c.JSON(http.StatusOK, students)
+}
+
 func (h *Handler) UpdateUser(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

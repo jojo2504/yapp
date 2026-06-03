@@ -44,6 +44,19 @@ func (h *Handler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+// Upcoming returns the exams the current user is scheduled to sit, so the
+// frontend can force them into the exam page 20 minutes before the start time.
+func (h *Handler) Upcoming(c *gin.Context) {
+	email := middleware.GetUserEmail(c)
+	items, err := h.service.Upcoming(email)
+	if err != nil {
+		log.Printf("ERROR Upcoming exams (email=%s): %v", email, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch upcoming exams"})
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateExamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -87,6 +100,45 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, e)
+}
+
+func (h *Handler) Stop(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	e, err := h.service.Stop(id, middleware.GetUserID(c), middleware.GetUserRole(c))
+	if err != nil {
+		c.JSON(controlStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, e)
+}
+
+func (h *Handler) Restart(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	e, err := h.service.Restart(id, middleware.GetUserID(c), middleware.GetUserRole(c))
+	if err != nil {
+		c.JSON(controlStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, e)
+}
+
+func controlStatus(err error) int {
+	switch err.Error() {
+	case "exam not found":
+		return http.StatusNotFound
+	case "not authorized":
+		return http.StatusForbidden
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func (h *Handler) Delete(c *gin.Context) {
