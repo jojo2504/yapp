@@ -4,10 +4,15 @@ import (
     "backend/api/types/submission"
     "context"
     "encoding/json"
+    "errors"
     "fmt"
+    "time"
 
     "github.com/redis/go-redis/v9"
 )
+
+// ErrKeyMissing is returned when a Redis key lookup finds no value.
+var ErrKeyMissing = errors.New("redis: key not found")
 
 type RedisService struct {
     Context context.Context // context.Background()
@@ -44,6 +49,26 @@ func Publish(rs *RedisService, channel string, message string) {
     } else {
         fmt.Println("Published:", message)
     }
+}
+
+// IncrCounter atomically increments the integer at `key` and returns the new value.
+// Used by the playground to mint unique submission IDs without touching the DB.
+func IncrCounter(rs *RedisService, key string) (int64, error) {
+    return rs.rdb.Incr(rs.Context, key).Result()
+}
+
+// SetWithTTL writes `value` under `key` with the given TTL.
+func SetWithTTL(rs *RedisService, key string, value string, ttl time.Duration) error {
+    return rs.rdb.Set(rs.Context, key, value, ttl).Err()
+}
+
+// GetKey reads the value at `key`. Returns ErrKeyMissing if no such key exists.
+func GetKey(rs *RedisService, key string) (string, error) {
+    v, err := rs.rdb.Get(rs.Context, key).Result()
+    if errors.Is(err, redis.Nil) {
+        return "", ErrKeyMissing
+    }
+    return v, err
 }
 
 func VerifyQueue(rs *RedisService) {

@@ -13,6 +13,8 @@ interface ApiExam {
   start_datetime: string;
   end_datetime: string;
   student_count: number;
+  group_ids: number[];
+  status_override: string;
   questions: unknown;
 }
 
@@ -24,17 +26,20 @@ function fromApi(raw: ApiExam): Exam {
     startDatetime: raw.start_datetime ?? '',
     endDatetime: raw.end_datetime ?? '',
     studentCount: raw.student_count ?? 0,
+    groupIds: (raw.group_ids ?? []).map(String),
+    statusOverride: (raw.status_override ?? '') as Exam['statusOverride'],
     questions: Array.isArray(raw.questions) ? (raw.questions as Question[]) : [],
   };
 }
 
-function toApi(e: Omit<Exam, 'id'>): object {
+function toApi(e: Omit<Exam, 'id' | 'statusOverride'>): object {
   return {
     title: e.title,
     duration_minutes: e.durationMinutes,
     start_datetime: e.startDatetime,
     end_datetime: e.endDatetime,
     student_count: e.studentCount,
+    group_ids: e.groupIds.map(Number),
     questions: e.questions,
   };
 }
@@ -124,7 +129,7 @@ export default function TeacherExams() {
   function openCreate() { setEditing(null); setModalOpen(true); }
   function openEdit(e: Exam) { setEditing(e); setModalOpen(true); }
 
-  async function handleSave(data: Omit<Exam, 'id'>) {
+  async function handleSave(data: Omit<Exam, 'id' | 'statusOverride'>) {
     const currentEditing = editing;
     setModalOpen(false);
     setEditing(null);

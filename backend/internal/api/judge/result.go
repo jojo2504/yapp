@@ -3,14 +3,21 @@ package judge
 import (
 	"backend/api/types/problem"
 	"backend/api/types/submission"
+	"backend/internal/redisService"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// playgroundResultTTL mirrors the TTL used by the submit handler when the
+// pending placeholder is created. The same window applies to the final result.
+const playgroundResultTTL = 10 * time.Minute
 
 // sentinel errors used for status-code mapping
 var (
@@ -63,6 +70,29 @@ func (h *Handler) SendResult(c *gin.Context) {
 			})
 			return
 		}
+	}
+
+	// Playground runs do not have a DB row — store the result back in Redis
+	// under the same key the polling endpoint reads from, then return early.
+	if submission.IsPlaygroundID(req.SubmissionID) {
+		payload, err := json.Marshal(map[string]any{
+			"id":             req.SubmissionID,
+			"verdict":        req.Verdict,
+			"message":        req.Message,
+			"execution_time": req.ExecutionTime,
+			"memory_usage":   req.MemoryUsage,
+			"judge_output":   req.JudgeOutput,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode result"})
+			return
+		}
+		if err := redisService.SetWithTTL(&h.Redis, submission.PlaygroundResultKey(req.SubmissionID), string(payload), playgroundResultTTL); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to persist playground result"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "updated"})
+		return
 	}
 
 	// Persist everything inside a single transaction.

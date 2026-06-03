@@ -14,6 +14,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 	read := r.Group("/api/exams", middleware.JWTAuth())
 	{
 		read.GET("", handler.List)
+		read.GET("/upcoming", handler.Upcoming)
 		read.GET("/:id", handler.Get)
 	}
 
@@ -21,6 +22,8 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 	{
 		write.POST("", handler.Create)
 		write.PUT("/:id", handler.Update)
+		write.POST("/:id/stop", handler.Stop)
+		write.POST("/:id/restart", handler.Restart)
 		write.DELETE("/:id", handler.Delete)
 	}
 }

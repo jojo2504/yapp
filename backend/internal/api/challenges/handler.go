@@ -26,8 +26,8 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 	role := middleware.GetUserRole(c)
-	hideExpected := role == "Student"
-	item, err := h.service.Get(id, hideExpected)
+	hideTeacherFields := role == "Student"
+	item, err := h.service.Get(id, hideTeacherFields)
 	if err != nil {
 		if err.Error() == "challenge not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "challenge not found"})

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './ManageChallenges.module.css';
-import ChallengeModal from './ChallengeModal';
 import { apiFetch } from '../../services/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -12,13 +12,18 @@ export type Category =
   | 'Linked Lists' | 'Stack & Queue';
 export type Language = 'javascript' | 'python' | 'cpp' | 'java';
 
-export interface TestCase { id: string; input: string; output: string; hidden: boolean; }
+export const LANGUAGE_LABELS: Record<Language, string> = {
+  javascript: 'JavaScript',
+  python:     'Python',
+  cpp:        'C++',
+  java:       'Java',
+};
 
-export interface StarterCode {
-  javascript: string;
-  python: string;
-  cpp: string;
-  java: string;
+export interface TestCase {
+  id: string;
+  title: string;
+  hidden: boolean;
+  validator: string;
 }
 
 export interface Challenge {
@@ -27,7 +32,8 @@ export interface Challenge {
   description: string;
   difficulty: Difficulty;
   category: Category;
-  starterCode: StarterCode;
+  language: Language;
+  starterCode: string;
   testCases: TestCase[];
 }
 
@@ -39,44 +45,110 @@ interface ApiChallenge {
   description: string;
   difficulty: string;
   category: string;
-  starter_code: unknown;
+  language?: string;
+  starter_code?: unknown;
   test_cases: unknown;
 }
 
-const EMPTY_STARTER: StarterCode = {
-  javascript: 'function solution() {\n  // Your code here\n}',
-  python:     'def solution():\n    # Your code here\n    pass',
-  cpp:        '#include <bits/stdc++.h>\nusing namespace std;\n\nvoid solution() {\n    // Your code here\n}',
-  java:       'class Solution {\n    public void solution() {\n        // Your code here\n    }\n}',
+const STARTER_TEMPLATES: Record<Language, string> = {
+  javascript: 'function solution(/* args */) {\n  // Your code here\n}\n',
+  python:     'def solution():  # add your args\n    # Your code here\n    pass\n',
+  cpp:        '#include <bits/stdc++.h>\nusing namespace std;\n\n// Define your function here — the validator calls it directly.\nint solution(/* args */) {\n    // Your code here\n    return 0;\n}\n',
+  java:       'class Solution {\n    public static int solution(/* args */) {\n        // Your code here\n        return 0;\n    }\n}\n',
 };
 
+// Validator templates assume the student exposes a function `solution(...)`.
+// The validator is concatenated with the student source (or paired as
+// `Validator` class for Java) so it can call `solution(...)` directly.
+const VALIDATOR_TEMPLATES: Record<Language, string> = {
+  javascript:
+    "// Calls the student's `solution` and checks the result.\nconst expected = /* TODO */ 0;\nconst got = solution(/* TODO: args */);\nif (got !== expected) {\n  console.error(`Expected ${expected}, got ${got}`);\n  process.exit(1);\n}\n",
+  python:
+    "# Calls the student's `solution` and checks the result.\nexpected = 0  # TODO\ngot = solution()  # TODO: args\nif got != expected:\n    print(f'Expected {expected!r}, got {got!r}')\n    exit(1)\n",
+  cpp:
+    '// Calls the student\'s `solution` (defined above) and checks the result.\nint main() {\n    auto expected = 0; // TODO\n    auto got = solution(/* TODO: args */);\n    if (got != expected) {\n        std::cerr << "Expected " << expected << ", got " << got << std::endl;\n        return 1;\n    }\n    return 0;\n}\n',
+  java:
+    '// Convention: the student\'s file is compiled as `class Solution`. This\n// validator is compiled as `public class Validator` and calls Solution.\npublic class Validator {\n    public static void main(String[] args) {\n        int expected = 0; // TODO\n        int got = Solution.solution(/* TODO: args */);\n        if (got != expected) {\n            System.err.println("Expected " + expected + ", got " + got);\n            System.exit(1);\n        }\n    }\n}\n',
+};
+
+export function starterTemplate(lang: Language): string {
+  return STARTER_TEMPLATES[lang];
+}
+
+export function validatorTemplate(lang: Language): string {
+  return VALIDATOR_TEMPLATES[lang];
+}
+
+function normalizeLanguage(raw: unknown): Language {
+  if (raw === 'javascript' || raw === 'python' || raw === 'cpp' || raw === 'java') return raw;
+  return 'python';
+}
+
+// ── Legacy-data adapters ─────────────────────────────────────────────────────
+// Challenges created before the single-language migration stored starter code
+// and validators as a map keyed by language (e.g. {"python": "...", "cpp": ...}).
+// New rows store a plain string. These helpers accept either shape so old
+// challenges keep rendering correctly until they're rewritten.
+
+function tryParseJsonObject(raw: string): Record<string, unknown> | null {
+  if (!raw.trimStart().startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch { /* not JSON */ }
+  return null;
+}
+
+export function resolveStarter(raw: unknown, lang: Language): string {
+  if (typeof raw === 'string') {
+    const obj = tryParseJsonObject(raw);
+    if (obj && typeof obj[lang] === 'string') return obj[lang] as string;
+    return raw;
+  }
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj[lang] === 'string') return obj[lang] as string;
+  }
+  return starterTemplate(lang);
+}
+
+export function resolveValidator(rawValidator: unknown, rawValidators: unknown, lang: Language): string {
+  // Preferred: new single-string field.
+  if (typeof rawValidator === 'string' && rawValidator.length > 0) return rawValidator;
+  // Legacy: per-language map stored under `validators`.
+  if (rawValidators && typeof rawValidators === 'object') {
+    const obj = rawValidators as Record<string, unknown>;
+    if (typeof obj[lang] === 'string') return obj[lang] as string;
+  }
+  return validatorTemplate(lang);
+}
+
 function fromApi(raw: ApiChallenge): Challenge {
+  const language = normalizeLanguage(raw.language);
   return {
     id: String(raw.id),
     title: raw.title ?? '',
     description: raw.description ?? '',
     difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Difficulty,
     category: (raw.category ?? 'Arrays') as Category,
-    starterCode: (raw.starter_code as StarterCode) ?? EMPTY_STARTER,
+    language,
+    starterCode: resolveStarter(raw.starter_code, language),
     testCases: Array.isArray(raw.test_cases)
-      ? (raw.test_cases as Array<{ id?: string; input: string; output: string; hidden?: boolean }>).map((tc, i) => ({
+      ? (raw.test_cases as Array<{
+          id?: string;
+          title?: string;
+          hidden?: boolean;
+          validator?: unknown;
+          validators?: unknown;
+        }>).map((tc, i) => ({
           id: tc.id ?? String(i),
-          input: tc.input ?? '',
-          output: tc.output ?? '',
+          title: tc.title ?? `Test ${i + 1}`,
           hidden: tc.hidden ?? false,
+          validator: resolveValidator(tc.validator, tc.validators, language),
         }))
       : [],
-  };
-}
-
-function toApi(c: Omit<Challenge, 'id'>): object {
-  return {
-    title: c.title,
-    description: c.description,
-    difficulty: c.difficulty,
-    category: c.category,
-    starter_code: c.starterCode,
-    test_cases: c.testCases,
   };
 }
 
@@ -113,11 +185,10 @@ function IconTrash() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ManageChallenges() {
+  const navigate = useNavigate();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
-  const [modalOpen, setModalOpen]   = useState(false);
-  const [editing, setEditing]       = useState<Challenge | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function loadChallenges() {
@@ -130,33 +201,8 @@ export default function ManageChallenges() {
 
   useEffect(() => { loadChallenges(); }, []);
 
-  function openCreate() { setEditing(null); setModalOpen(true); }
-  function openEdit(c: Challenge) { setEditing(c); setModalOpen(true); }
-
-  async function handleSave(data: Omit<Challenge, 'id'>) {
-    const currentEditing = editing;
-    setModalOpen(false);
-    setEditing(null);
-    setError('');
-    try {
-      if (currentEditing) {
-        const updated = await apiFetch<ApiChallenge>(`/api/challenges/${currentEditing.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(toApi(data)),
-        });
-        setChallenges(prev => prev.map(c => c.id === currentEditing.id ? fromApi(updated) : c));
-      } else {
-        const created = await apiFetch<ApiChallenge>('/api/challenges', {
-          method: 'POST',
-          body: JSON.stringify(toApi(data)),
-        });
-        setChallenges(prev => [...prev, fromApi(created)]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save challenge.');
-      loadChallenges();
-    }
-  }
+  function openCreate() { navigate('/admin/challenges/new'); }
+  function openEdit(c: Challenge) { navigate(`/admin/challenges/${c.id}/edit`); }
 
   async function handleDelete(id: string) {
     setConfirmDeleteId(null);
@@ -219,11 +265,12 @@ export default function ManageChallenges() {
                     {c.difficulty}
                   </span>
                   <span className={styles.categoryTag}>{c.category}</span>
+                  <span className={styles.categoryTag}>{LANGUAGE_LABELS[c.language]}</span>
                 </div>
               </div>
               <p className={styles.cardDesc}>{c.description}</p>
               <p className={styles.cardMeta}>
-                {c.testCases.length} test case{c.testCases.length !== 1 ? 's' : ''}
+                {c.testCases.length} validator{c.testCases.length !== 1 ? 's' : ''}
               </p>
             </div>
 
@@ -249,14 +296,6 @@ export default function ManageChallenges() {
         ))}
       </div>
 
-      {/* ── Modal ── */}
-      {modalOpen && (
-        <ChallengeModal
-          initial={editing}
-          onClose={() => { setModalOpen(false); setEditing(null); }}
-          onSave={handleSave}
-        />
-      )}
     </div>
   );
 }

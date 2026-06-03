@@ -1,44 +1,51 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useExamGuard } from '../../hooks/useExamGuard';
+import { apiFetch } from '../../services/api';
+import { LS } from '../../constants/storage';
+import { markExamDone } from '../ExamScheduleWatcher';
 import CodeEditor from './CodeEditor';
 import styles from './ExamGuard.module.css';
 
-// ── Exam data (populated from API) ────────────────────────────────
+// ── Exam data ─────────────────────────────────────────────────────
 interface ExamQuestion {
   id: number;
   text: string;
   options: readonly string[];
 }
 
-const FALLBACK_QUESTIONS: ExamQuestion[] = [
-  {
-    id: 1,
-    text: 'What is the time complexity of binary search on a sorted array of n elements?',
-    options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'],
-  },
-  {
-    id: 2,
-    text: 'Which data structure operates on a LIFO (Last In, First Out) principle?',
-    options: ['Queue', 'Stack', 'Linked List', 'Heap'],
-  },
-  {
-    id: 3,
-    text: 'What is the worst-case time complexity of quicksort?',
-    options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)'],
-  },
-  {
-    id: 4,
-    text: 'Which keyword is used to declare a constant in JavaScript?',
-    options: ['var', 'let', 'const', 'static'],
-  },
-  {
-    id: 5,
-    text: 'What does typeof null return in JavaScript?',
-    options: ['"null"', '"undefined"', '"object"', '"boolean"'],
-  },
-];
+interface ApiExam {
+  id: number;
+  title: string;
+  duration_minutes: number;
+  start_datetime: string;
+  status_override?: string;
+  questions: unknown;
+}
 
-const EXAM_DURATION_SECONDS = 30 * 60; // 30 minutes
+const DEFAULT_DURATION_MINUTES = 30;
+
+function currentStudentId(): string {
+  try {
+    const raw = localStorage.getItem(LS.USER);
+    if (raw) {
+      const u = JSON.parse(raw) as { email?: string; id?: number | string };
+      return String(u.email ?? u.id ?? 'self');
+    }
+  } catch { /* ignore */ }
+  return 'self';
+}
+
+function mapQuestions(raw: unknown): ExamQuestion[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((q: any) => q && q.type === 'multiple-choice')
+    .map((q: any, i: number) => ({
+      id: i + 1,
+      text: q.text ?? '',
+      options: Array.isArray(q.options) ? q.options : [],
+    }));
+}
 
 // ── Helpers ───────────────────────────────────────────────────────
 function formatTime(seconds: number): string {
@@ -47,32 +54,62 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-type ExamPhase = 'idle' | 'active' | 'completed';
+type ExamPhase = 'loading' | 'idle' | 'active' | 'completed' | 'error';
 
 // ── Component ─────────────────────────────────────────────────────
 export default function ExamGuard({ examId }: { examId?: string } = {}) {
-  const questions = useMemo<ExamQuestion[]>(() => {
-    if (!examId) return FALLBACK_QUESTIONS;
-    try {
-      const exams = JSON.parse(localStorage.getItem('a_exams') || '[]');
-      const exam = exams.find((e: any) => e.id === examId);
-      return exam?.questions?.length ? exam.questions : FALLBACK_QUESTIONS;
-    } catch {
-      return FALLBACK_QUESTIONS;
-    }
-  }, [examId]);
+  const navigate = useNavigate();
+  const [title, setTitle]           = useState('Exam');
+  const [questions, setQuestions]   = useState<ExamQuestion[]>([]);
+  const [durationSeconds, setDurationSeconds] = useState(DEFAULT_DURATION_MINUTES * 60);
+  const [startIso, setStartIso]     = useState('');
+  const [loadError, setLoadError]   = useState('');
 
   const guard = useExamGuard({
     maxViolations: 3,
-    examId: 'demo-exam',
-    studentId: 'demo-student',
+    examId: examId ?? '',
+    studentId: currentStudentId(),
     onMajorViolation: () => handleSubmit(),
   });
 
-  const [phase, setPhase]           = useState<ExamPhase>('idle');
+  const [phase, setPhase]           = useState<ExamPhase>(examId ? 'loading' : 'error');
   const [currentQ, setCurrentQ]     = useState(0);
   const [answers, setAnswers]       = useState<Record<number, number>>({});
-  const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(DEFAULT_DURATION_MINUTES * 60);
+
+  const EXAM_DURATION_SECONDS = durationSeconds;
+
+  // ── Load the real exam ──────────────────────────────────────────
+  useEffect(() => {
+    if (!examId) {
+      setLoadError('No exam selected.');
+      setPhase('error');
+      return;
+    }
+    let cancelled = false;
+    setPhase('loading');
+    apiFetch<ApiExam>(`/api/exams/${examId}`)
+      .then(raw => {
+        if (cancelled) return;
+        const mapped = mapQuestions(raw.questions);
+        const mins = raw.duration_minutes && raw.duration_minutes > 0
+          ? raw.duration_minutes
+          : DEFAULT_DURATION_MINUTES;
+        setTitle(raw.title || 'Exam');
+        setQuestions(mapped);
+        setDurationSeconds(mins * 60);
+        setSecondsLeft(mins * 60);
+        setStartIso(raw.start_datetime ?? '');
+        // Already force-stopped by an admin → don't let them start.
+        setPhase(raw.status_override === 'stopped' ? 'completed' : 'idle');
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : 'Failed to load exam.');
+        setPhase('error');
+      });
+    return () => { cancelled = true; };
+  }, [examId]);
 
   // ── Countdown timer ─────────────────────────────────────────────
   useEffect(() => {
@@ -104,12 +141,23 @@ export default function ExamGuard({ examId }: { examId?: string } = {}) {
 
   const handleSubmit = () => {
     guard.endExam();
+    if (examId) markExamDone(examId, startIso);
     setPhase('completed');
   };
 
-  const handleRetry = () => {
-    setPhase('idle');
-  };
+  // While the exam is running, poll its status so an admin "Stop" ends the
+  // student's session promptly.
+  useEffect(() => {
+    if (phase !== 'active' || !examId) return;
+    const id = setInterval(async () => {
+      try {
+        const raw = await apiFetch<ApiExam>(`/api/exams/${examId}`);
+        if (raw.status_override === 'stopped') handleSubmit();
+      } catch { /* keep going */ }
+    }, 15000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, examId]);
 
   const selectAnswer = (questionIndex: number, optionIndex: number) => {
     setAnswers(prev => ({ ...prev, [questionIndex]: optionIndex }));
@@ -134,6 +182,36 @@ export default function ExamGuard({ examId }: { examId?: string } = {}) {
   const isLastQuestion = currentQ === questions.length - 1;
   const answeredCount  = Object.keys(answers).length;
 
+  // ── Render: loading ──────────────────────────────────────────────
+  if (phase === 'loading') {
+    return (
+      <div className={styles.page}>
+        <div className={styles.startScreen}>
+          <div className={styles.startCard}>
+            <p className={styles.startMeta}>Loading exam…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render: error ────────────────────────────────────────────────
+  if (phase === 'error') {
+    return (
+      <div className={styles.page}>
+        <div className={styles.startScreen}>
+          <div className={styles.startCard}>
+            <p className={styles.startMeta}>⚠️ Unable to start exam</p>
+            <p className={styles.startSubtitle}>{loadError || 'This exam could not be loaded.'}</p>
+            <button className={styles.btnRetry} onClick={() => navigate('/dashboard')}>
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Render: idle ─────────────────────────────────────────────────
   if (phase === 'idle') {
     return (
@@ -143,7 +221,7 @@ export default function ExamGuard({ examId }: { examId?: string } = {}) {
             <p className={styles.startMeta}>
               <span>⚡</span> Exam Session
             </p>
-            <h1 className={styles.startTitle}>Exam</h1>
+            <h1 className={styles.startTitle}>{title}</h1>
             <p className={styles.startSubtitle}>
               A timed session with {questions.length} question{questions.length !== 1 ? 's' : ''}.
               Your focus is monitored throughout.
@@ -241,8 +319,8 @@ export default function ExamGuard({ examId }: { examId?: string } = {}) {
               </div>
             )}
 
-            <button className={styles.btnRetry} onClick={handleRetry}>
-              Try Demo Again
+            <button className={styles.btnRetry} onClick={() => navigate('/dashboard')}>
+              Return to Dashboard
             </button>
           </div>
         </div>
@@ -269,7 +347,7 @@ export default function ExamGuard({ examId }: { examId?: string } = {}) {
 
         {/* Header */}
         <div className={styles.examHeader}>
-          <span className={styles.examTitle}>Exam</span>
+          <span className={styles.examTitle}>{title}</span>
           <div className={styles.examHeaderRight}>
             <span className={`${styles.timer} ${timerClass}`}>
               <span className={styles.timerIcon}>⏱</span>

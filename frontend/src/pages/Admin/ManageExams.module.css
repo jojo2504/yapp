@@ -151,6 +151,7 @@
 .statusUpcoming  { background: var(--coral-tint);  color: var(--coral-dark); }
 .statusActive    { background: var(--emerald-tint); color: var(--emerald); }
 .statusCompleted { background: var(--surface-glass-soft); color: var(--text-muted); border: 1px solid var(--border-glass); }
+.statusStopped   { background: var(--ruby-tint); color: var(--ruby); border: 1px solid var(--ruby-border); }
 
 .activeDot {
   width: 6px;
@@ -268,6 +269,48 @@
   border-color: var(--ruby-border);
   color: var(--ruby);
   background: var(--ruby-soft);
+}
+
+.btnStop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ruby-border);
+  background: var(--ruby-soft);
+  color: var(--ruby);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btnStop:hover {
+  border-color: var(--ruby-border-strong);
+  background: var(--ruby-tint);
+}
+
+.btnRestart {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--emerald-border);
+  background: var(--emerald-soft);
+  color: var(--emerald);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btnRestart:hover {
+  border-color: var(--emerald);
+  background: var(--emerald-tint);
 }
 
 .btnDelete {

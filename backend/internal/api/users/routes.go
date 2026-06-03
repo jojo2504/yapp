@@ -19,4 +19,10 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 		admin.PATCH("/:id/ban", handler.ToggleBan)
 		admin.DELETE("/:id", handler.DeleteUser)
 	}
+
+	// Lightweight student directory for group/exam assignment pickers.
+	students := r.Group("/api/students", middleware.JWTAuth(), middleware.RequireRole("Teacher", "Admin"))
+	{
+		students.GET("", handler.ListStudents)
+	}
 }

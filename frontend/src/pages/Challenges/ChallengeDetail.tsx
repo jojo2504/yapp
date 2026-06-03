@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import CodeEditor from '../../components/UI/CodeEditor';
 import { apiFetch } from '../../services/api';
+import { resolveStarter } from '../Admin/ManageChallenges';
 import styles from './ChallengeDetail.module.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -14,16 +15,22 @@ interface ApiChallenge {
   description: string;
   difficulty: string;
   category: string;
-  starter_code: unknown;
+  language?: string;
+  starter_code?: unknown;
   test_cases: unknown;
 }
 
 interface ApiTestCase {
   id?: string;
-  input: string;
-  output?: string;
-  expected?: string;
+  title?: string;
   hidden?: boolean;
+}
+
+type EditorLang = 'javascript' | 'python' | 'cpp' | 'java';
+
+function normalizeLanguage(raw: unknown): EditorLang {
+  if (raw === 'javascript' || raw === 'python' || raw === 'cpp' || raw === 'java') return raw;
+  return 'python';
 }
 
 interface Challenge {
@@ -33,6 +40,8 @@ interface Challenge {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   category: string;
   testCases: ApiTestCase[];
+  language: EditorLang;
+  starterCode: string;
 }
 
 function fromApi(raw: ApiChallenge): Challenge {
@@ -40,6 +49,7 @@ function fromApi(raw: ApiChallenge): Challenge {
   if (Array.isArray(raw.test_cases)) {
     testCases = raw.test_cases as ApiTestCase[];
   }
+  const language = normalizeLanguage(raw.language);
   return {
     id: String(raw.id),
     title: raw.title ?? '',
@@ -47,15 +57,16 @@ function fromApi(raw: ApiChallenge): Challenge {
     difficulty: (['Easy', 'Medium', 'Hard'].includes(raw.difficulty) ? raw.difficulty : 'Easy') as Challenge['difficulty'],
     category: raw.category ?? '',
     testCases,
+    language,
+    starterCode: resolveStarter(raw.starter_code, language),
   };
 }
 
 // ── Challenge judge output types ───────────────────────────────────────────────
 
 interface ChallengeTestCaseResult {
-  input: string;
-  expected: string;
-  actual: string | null;
+  title: string;
+  output?: string | null;
   verdict: string;
   hidden: boolean;
   time_ms: number;
@@ -76,18 +87,28 @@ interface SubmitState {
   submissionId?: number;
   verdict?: string;
   results?: ChallengeJudgeOutput;
+  /**
+   * Top-level message returned by the judge (compile errors, internal
+   * failures). Shown above the per-validator breakdown so the student sees
+   * something even when no test cases were evaluated.
+   */
   error?: string;
 }
 
 async function pollSubmission(id: number, timeoutMs = 30_000): Promise<{
   verdict: string;
   judge_output?: string;
+  message?: string;
 }> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 800));
     try {
-      const sub = await apiFetch<{ verdict: string; judge_output?: string }>(`/api/submissions/${id}`);
+      const sub = await apiFetch<{
+        verdict: string;
+        judge_output?: string;
+        message?: string;
+      }>(`/api/submissions/${id}`);
       if (sub.verdict !== 'Pending') return sub;
     } catch {
       // network blip — keep polling
@@ -136,28 +157,36 @@ export default function ChallengeDetail() {
 
   const [activeTab, setActiveTab] = useState<Tab>('problem');
 
-  // Current editor state (tracked via onStateChange callback)
-  const currentLang = useRef<string>('javascript');
+  // Current editor state (tracked via onStateChange callback). The language
+  // is fixed by the challenge so we only track the source code.
   const currentCode = useRef<string>('');
 
   const [submitState, setSubmitState] = useState<SubmitState>({ phase: 'idle' });
 
   useEffect(() => {
     apiFetch<ApiChallenge>(`/api/challenges/${id}`)
-      .then(data => setChallenge(fromApi(data)))
+      .then(data => {
+        const ch = fromApi(data);
+        setChallenge(ch);
+        // Seed the source-code ref so a student who hits Submit before typing
+        // anything still sends the starter code rather than an empty string.
+        currentCode.current = ch.starterCode;
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
 
   const handleSubmit = async () => {
     if (!id || submitState.phase === 'pending') return;
+    // Pull the student onto the Results tab right away so they can watch the
+    // verdict come in instead of having to hunt for a "View Results" button.
+    setActiveTab('submissions');
     setSubmitState({ phase: 'pending' });
 
     try {
       const res = await apiFetch<{ id: number }>(`/api/challenges/${id}/submit`, {
         method: 'POST',
         body: JSON.stringify({
-          language: currentLang.current,
           source_code: currentCode.current,
         }),
       });
@@ -174,6 +203,7 @@ export default function ChallengeDetail() {
         submissionId: res.id,
         verdict: judged.verdict,
         results,
+        error: judged.message ?? undefined,
       });
     } catch (e: unknown) {
       setSubmitState({
@@ -282,39 +312,31 @@ export default function ChallengeDetail() {
 
                 {hiddenCount > 0 && (
                   <p className={styles.hiddenNote}>
-                    + {hiddenCount} hidden test case{hiddenCount !== 1 ? 's' : ''} used during grading
+                    + {hiddenCount} hidden validator{hiddenCount !== 1 ? 's' : ''} used during grading
                   </p>
                 )}
               </>
             )}
 
-            {/* EXAMPLES TAB */}
+            {/* EXAMPLES TAB → list of visible validator titles */}
             {activeTab === 'examples' && (
               <div className={styles.exampleList}>
                 {visibleTestCases.length === 0 ? (
                   <p style={{ color: 'var(--text-muted, #888)', padding: '1rem 0' }}>
-                    No examples available for this challenge.
+                    No public validators for this challenge.
                   </p>
                 ) : (
                   visibleTestCases.map((tc, i) => (
                     <div key={tc.id ?? i} className={styles.exampleCard}>
-                      <div className={styles.exampleLabel}>Example {i + 1}</div>
-                      <div className={styles.exampleBody}>
-                        <div className={styles.ioRow}>
-                          <span className={styles.ioLabel}>Input</span>
-                          <pre className={styles.ioBlock}>{tc.input}</pre>
-                        </div>
-                        <div className={styles.ioRow}>
-                          <span className={styles.ioLabel}>Output</span>
-                          <pre className={styles.ioBlock}>{tc.output ?? tc.expected ?? ''}</pre>
-                        </div>
+                      <div className={styles.exampleLabel}>
+                        {tc.title?.trim() ? tc.title : `Validator ${i + 1}`}
                       </div>
                     </div>
                   ))
                 )}
                 {hiddenCount > 0 && (
                   <p className={styles.hiddenNote}>
-                    + {hiddenCount} hidden test case{hiddenCount !== 1 ? 's' : ''} used during grading
+                    + {hiddenCount} hidden validator{hiddenCount !== 1 ? 's' : ''} used during grading
                   </p>
                 )}
               </div>
@@ -341,16 +363,12 @@ export default function ChallengeDetail() {
                   </p>
                 )}
 
-                {submitState.phase === 'done' && submitState.results && (
-                  <SubmitResults verdict={submitState.verdict!} results={submitState.results} />
-                )}
-
-                {submitState.phase === 'done' && !submitState.results && (
-                  <div className={styles.resultSummary}>
-                    <span className={submitState.verdict === 'Accepted' ? styles.verdictOk : styles.verdictFail}>
-                      {VERDICT_LABEL[submitState.verdict!] ?? submitState.verdict}
-                    </span>
-                  </div>
+                {submitState.phase === 'done' && (
+                  <SubmitResults
+                    verdict={submitState.verdict!}
+                    results={submitState.results}
+                    topLevelMessage={submitState.error}
+                  />
                 )}
               </div>
             )}
@@ -362,8 +380,9 @@ export default function ChallengeDetail() {
         <div className={styles.rightPanel}>
           <div className={styles.editorWrap}>
             <CodeEditor
-              onStateChange={(lang, code) => {
-                currentLang.current = lang;
+              language={challenge.language}
+              starterCode={challenge.starterCode}
+              onStateChange={(_lang, code) => {
                 currentCode.current = code;
               }}
             />
@@ -392,8 +411,17 @@ export default function ChallengeDetail() {
 
 // ── Submit results panel ──────────────────────────────────────────────────────
 
-function SubmitResults({ verdict, results }: { verdict: string; results: ChallengeJudgeOutput }) {
+function SubmitResults({
+  verdict,
+  results,
+  topLevelMessage,
+}: {
+  verdict: string;
+  results?: ChallengeJudgeOutput;
+  topLevelMessage?: string;
+}) {
   const isAccepted = verdict === 'Accepted';
+  const cases = results?.test_cases ?? [];
 
   return (
     <div className={styles.resultsWrap}>
@@ -401,20 +429,48 @@ function SubmitResults({ verdict, results }: { verdict: string; results: Challen
         <span className={isAccepted ? styles.verdictOk : styles.verdictFail}>
           {VERDICT_LABEL[verdict] ?? verdict}
         </span>
-        <span className={styles.resultScore}>
-          {results.passed} / {results.total} tests passed
-        </span>
+        {results && (
+          <span className={styles.resultScore}>
+            {results.passed} / {results.total} validators passed
+          </span>
+        )}
       </div>
 
+      {/* Top-level error from the judge — typically a compilation failure
+          that prevented any validator from running. Shown before the per-case
+          list so the student notices it immediately. */}
+      {topLevelMessage && topLevelMessage.trim().length > 0 && (
+        <div className={styles.testResult + ' ' + styles.testResultFail}>
+          <div className={styles.testResultHeader}>
+            <span className={styles.testResultIcon}>✗</span>
+            <span className={styles.testResultLabel}>Judge output</span>
+          </div>
+          <div className={styles.testResultBody}>
+            <pre className={`${styles.testResultPre} ${styles.testResultPreFail}`}>
+              {topLevelMessage}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {cases.length === 0 && !topLevelMessage && (
+        <p style={{ color: 'var(--text-muted, #888)', padding: '0.75rem 0' }}>
+          No per-validator breakdown was returned.
+        </p>
+      )}
+
       <div className={styles.testResultList}>
-        {results.test_cases.map((tc, i) => {
+        {cases.map((tc, i) => {
           const pass = tc.verdict === 'Accepted';
+          const label = tc.title?.trim()
+            ? tc.title
+            : `Validator ${i + 1}`;
           return (
             <div key={i} className={`${styles.testResult} ${pass ? styles.testResultPass : styles.testResultFail}`}>
               <div className={styles.testResultHeader}>
                 <span className={styles.testResultIcon}>{pass ? '✓' : '✗'}</span>
                 <span className={styles.testResultLabel}>
-                  Test {i + 1}{tc.hidden ? ' (hidden)' : ''}
+                  {label}{tc.hidden ? ' (hidden)' : ''}
                 </span>
                 <span className={styles.testResultVerdict}>
                   {VERDICT_LABEL[tc.verdict] ?? tc.verdict}
@@ -422,24 +478,14 @@ function SubmitResults({ verdict, results }: { verdict: string; results: Challen
                 <span className={styles.testResultTime}>{tc.time_ms}ms</span>
               </div>
 
-              {!tc.hidden && (
+              {!tc.hidden && tc.output && tc.output.trim().length > 0 && (
                 <div className={styles.testResultBody}>
                   <div className={styles.testResultRow}>
-                    <span className={styles.testResultRowLabel}>Input</span>
-                    <pre className={styles.testResultPre}>{tc.input}</pre>
+                    <span className={styles.testResultRowLabel}>Output</span>
+                    <pre className={`${styles.testResultPre} ${pass ? styles.testResultPreOk : styles.testResultPreFail}`}>
+                      {tc.output}
+                    </pre>
                   </div>
-                  <div className={styles.testResultRow}>
-                    <span className={styles.testResultRowLabel}>Expected</span>
-                    <pre className={styles.testResultPre}>{tc.expected}</pre>
-                  </div>
-                  {tc.actual !== null && tc.actual !== undefined && (
-                    <div className={styles.testResultRow}>
-                      <span className={styles.testResultRowLabel}>Got</span>
-                      <pre className={`${styles.testResultPre} ${pass ? styles.testResultPreOk : styles.testResultPreFail}`}>
-                        {tc.actual}
-                      </pre>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

@@ -33,12 +33,16 @@ pub struct TestResultDTO {
 }
 
 /// Per-test-case outcome for challenge submissions (serialised into judge_output).
+///
+/// `title` is the human-readable name the teacher set on the validator.
+/// `output` merges stdout and stderr from the combined student + validator
+/// run — typically the validator's failure reason on a non-zero exit, or
+/// compiler diagnostics on a build failure.
 #[derive(Debug, Serialize)]
 pub struct ChallengeTestResult {
-    pub input: String,
-    pub expected: String,
+    pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub actual: Option<String>,
+    pub output: Option<String>,
     pub verdict: Verdict,
     pub hidden: bool,
     pub time_ms: u32,

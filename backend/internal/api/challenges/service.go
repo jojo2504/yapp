@@ -6,38 +6,66 @@ import (
 	"backend/api/types/submission"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 )
 
+// canonicalLanguage maps the frontend's lowercase language identifiers
+// (the keys Monaco uses: "python", "cpp", "javascript", "java", …) to the
+// PascalCase variants the Go and Rust enums expect ("Python", "Cpp",
+// "Javascript", "Java", …). Anything already in canonical form is passed
+// through unchanged.
+func canonicalLanguage(s string) problem.Language {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "python":             return problem.Python
+	case "javascript", "js":   return problem.Javascript
+	case "typescript", "ts":   return problem.Typescript
+	case "cpp", "c++":         return problem.Cpp
+	case "c":                  return problem.C
+	case "csharp", "c#":       return problem.Csharp
+	case "java":               return problem.Java
+	case "rust":               return problem.Rust
+	case "go", "golang":       return problem.Go
+	case "swift":              return problem.Swift
+	}
+	return problem.Language(s)
+}
+
 // ChallengeTestCase mirrors the JSON structure stored in challenges.test_cases.
+// The validator is a complete program in the challenge's language; it calls
+// the student's function and decides pass/fail itself.
 type ChallengeTestCase struct {
-	Input    string `json:"input"`
-	Output   string `json:"output"`
-	Hidden   bool   `json:"hidden"`
-	Position int    `json:"position"`
+	Title     string `json:"title"`
+	Hidden    bool   `json:"hidden"`
+	Position  int    `json:"position"`
+	Validator string `json:"validator"`
 }
 
 type CreateChallengeRequest struct {
-	Title       string      `json:"title" binding:"required,min=1,max=200"`
-	Description string      `json:"description"`
-	Difficulty  string      `json:"difficulty"`
-	Category    string      `json:"category"`
-	StarterCode interface{} `json:"starter_code"`
-	TestCases   interface{} `json:"test_cases"`
+	Title       string            `json:"title" binding:"required,min=1,max=200"`
+	Description string            `json:"description"`
+	Difficulty  string            `json:"difficulty"`
+	Category    string            `json:"category"`
+	Language    string            `json:"language" binding:"required"`
+	StarterCode string            `json:"starter_code"`
+	TestCases   challenge.JSONText `json:"test_cases"`
 }
 
 type UpdateChallengeRequest struct {
-	Title       *string     `json:"title"`
-	Description *string     `json:"description"`
-	Difficulty  *string     `json:"difficulty"`
-	Category    *string     `json:"category"`
-	StarterCode interface{} `json:"starter_code"`
-	TestCases   interface{} `json:"test_cases"`
+	Title       *string            `json:"title"`
+	Description *string            `json:"description"`
+	Difficulty  *string            `json:"difficulty"`
+	Category    *string            `json:"category"`
+	Language    *string            `json:"language"`
+	StarterCode *string            `json:"starter_code"`
+	TestCases   challenge.JSONText `json:"test_cases"`
 }
 
+// SubmitRequest carries only the student's source code — the language is
+// forced to the challenge's language server-side, so a submission can't be
+// run in a different language than the creator intended.
 type SubmitRequest struct {
-	Language   string `json:"language" binding:"required"`
 	SourceCode string `json:"source_code" binding:"required"`
 }
 
@@ -50,36 +78,35 @@ func NewService(db *gorm.DB) *Service {
 }
 
 // parseTestCases extracts the test cases from the challenge's JSON blob.
-func parseTestCases(raw interface{}) []ChallengeTestCase {
-	if raw == nil {
-		return nil
-	}
-	b, err := json.Marshal(raw)
-	if err != nil {
+func parseTestCases(raw challenge.JSONText) []ChallengeTestCase {
+	if len(raw) == 0 {
 		return nil
 	}
 	var tcs []ChallengeTestCase
-	if err := json.Unmarshal(b, &tcs); err != nil {
+	if err := json.Unmarshal(raw, &tcs); err != nil {
 		return nil
 	}
 	return tcs
 }
 
-// Get returns the challenge, hiding expected output for hidden test cases when
-// hideExpected is true (i.e. for Students).
-func (s *Service) Get(id int64, hideExpected bool) (*challenge.Challenge, error) {
+// Get returns the challenge. When hideTeacherFields is true (i.e. for Students),
+// validator source code is stripped from every test case — students only see
+// the title and visibility flag.
+func (s *Service) Get(id int64, hideTeacherFields bool) (*challenge.Challenge, error) {
 	var c challenge.Challenge
 	if err := s.db.First(&c, id).Error; err != nil {
 		return nil, errors.New("challenge not found")
 	}
-	if hideExpected {
+	if hideTeacherFields {
 		tcs := parseTestCases(c.TestCases)
 		for i := range tcs {
-			if tcs[i].Hidden {
-				tcs[i].Output = ""
-			}
+			tcs[i].Validator = ""
 		}
-		c.TestCases = tcs
+		// Re-encode the stripped list back into the model so the JSON response
+		// keeps the same shape (an array, not a quoted string).
+		if buf, err := json.Marshal(tcs); err == nil {
+			c.TestCases = challenge.JSONText(buf)
+		}
 	}
 	return &c, nil
 }
@@ -107,6 +134,7 @@ func (s *Service) Create(req CreateChallengeRequest, createdBy int64) (*challeng
 		Description: req.Description,
 		Difficulty:  difficulty,
 		Category:    req.Category,
+		Language:    req.Language,
 		StarterCode: req.StarterCode,
 		TestCases:   req.TestCases,
 		CreatedBy:   &createdBy,
@@ -139,11 +167,16 @@ func (s *Service) Update(id int64, req UpdateChallengeRequest, userID int64, use
 	if req.Category != nil {
 		updates["category"] = *req.Category
 	}
-	if req.StarterCode != nil {
-		updates["starter_code"] = req.StarterCode
+	if req.Language != nil {
+		updates["language"] = *req.Language
 	}
-	if req.TestCases != nil {
-		updates["test_cases"] = req.TestCases
+	if req.StarterCode != nil {
+		updates["starter_code"] = *req.StarterCode
+	}
+	if len(req.TestCases) > 0 {
+		// Pass raw JSON text so pgx encodes it as TEXT without trying to guess
+		// a per-element encoder for the map values inside.
+		updates["test_cases"] = string(req.TestCases)
 	}
 	if err := s.db.Model(&c).Updates(updates).Error; err != nil {
 		return nil, err
@@ -182,10 +215,10 @@ func (s *Service) Submit(challengeID int64, req SubmitRequest, userID int64) (*s
 			pos = i
 		}
 		inlineTestCases[i] = submission.InlineTestCase{
-			Input:    tc.Input,
-			Expected: tc.Output,
-			Hidden:   tc.Hidden,
-			Position: pos,
+			Title:     tc.Title,
+			Hidden:    tc.Hidden,
+			Position:  pos,
+			Validator: tc.Validator,
 		}
 	}
 
@@ -193,7 +226,7 @@ func (s *Service) Submit(challengeID int64, req SubmitRequest, userID int64) (*s
 		UserID:          userID,
 		ProblemID:       0,
 		ChallengeID:     &challengeID,
-		Language:        problem.Language(req.Language),
+		Language:        canonicalLanguage(c.Language),
 		SourceCode:      req.SourceCode,
 		Verdict:         submission.VerdictPending,
 		InlineTestCases: inlineTestCases,

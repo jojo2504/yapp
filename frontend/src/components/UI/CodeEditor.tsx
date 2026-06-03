@@ -101,21 +101,47 @@ async function pollSubmission(id: number, timeoutMs = 20_000): Promise<RunResult
 interface CodeEditorProps {
   /** Called whenever the language or code changes, so a parent can track state. */
   onStateChange?: (language: string, code: string) => void;
+  /**
+   * Force the editor to a single language and hide the language selector.
+   * Set by challenge pages so students can only solve in the language the
+   * challenge creator picked. Without it the editor lets the user pick.
+   */
+  language?: Language;
+  /**
+   * Single starter code string to seed the editor with (paired with
+   * `language`). When `language` is omitted this prop is ignored and the
+   * built-in DEFAULT_CODE templates are used instead.
+   */
+  starterCode?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────
-export default function CodeEditor({ onStateChange }: CodeEditorProps = {}) {
-  const [language, setLanguage] = useState<Language>('javascript');
+export default function CodeEditor({ onStateChange, language: lockedLanguage, starterCode }: CodeEditorProps = {}) {
+  const isLocked = lockedLanguage !== undefined;
+
+  // Resolve the initial code for a given language. When locked, use the
+  // supplied starterCode (falling back to the built-in default); otherwise
+  // just use the built-in default for that language.
+  const resolveCode = (lang: Language) => {
+    if (isLocked && lang === lockedLanguage && typeof starterCode === 'string') {
+      return starterCode;
+    }
+    return DEFAULT_CODE[lang];
+  };
+
+  const [language, setLanguage] = useState<Language>(lockedLanguage ?? 'javascript');
   const [result,   setResult]   = useState<RunResult>({ status: 'idle' });
   const [running,  setRunning]  = useState(false);
 
-  const codeRef = useRef<string>(DEFAULT_CODE.javascript);
+  const codeRef = useRef<string>(resolveCode(language));
 
   const handleLanguageChange = (lang: Language) => {
+    if (isLocked) return;
+    const code = resolveCode(lang);
     setLanguage(lang);
-    codeRef.current = DEFAULT_CODE[lang];
+    codeRef.current = code;
     setResult({ status: 'idle' });
-    onStateChange?.(lang, DEFAULT_CODE[lang]);
+    onStateChange?.(lang, code);
   };
 
   const handleRun = async () => {
@@ -179,17 +205,25 @@ export default function CodeEditor({ onStateChange }: CodeEditorProps = {}) {
 
       {/* ── Toolbar ── */}
       <div className={styles.toolbar}>
-        <div className={styles.langSelector}>
-          {(Object.keys(LANGUAGE_LABELS) as Language[]).map(lang => (
-            <button
-              key={lang}
-              className={`${styles.langBtn} ${language === lang ? styles.langBtnActive : ''}`}
-              onClick={() => handleLanguageChange(lang)}
-            >
-              {LANGUAGE_LABELS[lang]}
-            </button>
-          ))}
-        </div>
+        {isLocked ? (
+          <div className={styles.langSelector}>
+            <span className={`${styles.langBtn} ${styles.langBtnActive}`}>
+              {LANGUAGE_LABELS[language]}
+            </span>
+          </div>
+        ) : (
+          <div className={styles.langSelector}>
+            {(Object.keys(LANGUAGE_LABELS) as Language[]).map(lang => (
+              <button
+                key={lang}
+                className={`${styles.langBtn} ${language === lang ? styles.langBtnActive : ''}`}
+                onClick={() => handleLanguageChange(lang)}
+              >
+                {LANGUAGE_LABELS[lang]}
+              </button>
+            ))}
+          </div>
+        )}
 
         <button
           className={`${styles.runBtn} ${running ? styles.runBtnBusy : ''}`}
@@ -206,7 +240,7 @@ export default function CodeEditor({ onStateChange }: CodeEditorProps = {}) {
           key={language}
           height="100%"
           language={MONACO_LANG[language]}
-          defaultValue={DEFAULT_CODE[language]}
+          defaultValue={resolveCode(language)}
           theme="vs-dark"
           onChange={v => { codeRef.current = v ?? ''; onStateChange?.(language, v ?? ''); }}
           options={{

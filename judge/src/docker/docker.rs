@@ -152,6 +152,23 @@ impl DockerClient {
     }
 
 
+    /// Writes arbitrary `content` to `path` inside the container. Uses a
+    /// heredoc with a distinctive marker so quoting/backslashes pass verbatim.
+    pub async fn write_file(
+        &self,
+        container_name: &str,
+        path: &str,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let cmd = vec![
+            "bash".to_string(),
+            "-c".to_string(),
+            format!("cat > {} << '_JUDGE_FILE_EOF_'\n{}\n_JUDGE_FILE_EOF_", path, content),
+        ];
+        self.run_command(container_name, cmd, None).await?;
+        Ok(())
+    }
+
     /// Writes `input` to `/tmp/stdin` inside the container so that the run
     /// command can redirect it with `< /tmp/stdin`.
     pub async fn inject_stdin(
