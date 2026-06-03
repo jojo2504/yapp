@@ -16,6 +16,8 @@ interface ApiChallenge {
   language?: string;
   starter_code?: unknown;
   test_cases: unknown;
+  visibility?: string;
+  group_ids?: number[];
 }
 
 function normalizeLanguage(raw: unknown): Language {
@@ -47,6 +49,8 @@ function fromApi(raw: ApiChallenge): Challenge {
           validator: resolveValidator(tc.validator, tc.validators, language),
         }))
       : [],
+    visibility: raw.visibility === 'groups' ? 'groups' : 'everyone',
+    groupIds: (raw.group_ids ?? []).map(String),
   };
 }
 

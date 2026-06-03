@@ -26,8 +26,8 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 	role := middleware.GetUserRole(c)
-	hideTeacherFields := role == "Student"
-	item, err := h.service.Get(id, hideTeacherFields)
+	email := middleware.GetUserEmail(c)
+	item, err := h.service.Get(id, role, email)
 	if err != nil {
 		if err.Error() == "challenge not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "challenge not found"})
@@ -43,8 +43,9 @@ func (h *Handler) Get(c *gin.Context) {
 func (h *Handler) List(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	userRole := middleware.GetUserRole(c)
+	userEmail := middleware.GetUserEmail(c)
 
-	items, err := h.service.List(userID, userRole)
+	items, err := h.service.List(userID, userRole, userEmail)
 	if err != nil {
 		log.Printf("ERROR List challenges (userID=%d role=%s): %v", userID, userRole, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch challenges"})
@@ -133,8 +134,10 @@ func (h *Handler) Submit(c *gin.Context) {
 		return
 	}
 	userID := middleware.GetUserID(c)
+	userRole := middleware.GetUserRole(c)
+	userEmail := middleware.GetUserEmail(c)
 
-	sub, err := h.service.Submit(id, req, userID)
+	sub, err := h.service.Submit(id, req, userID, userRole, userEmail)
 	if err != nil {
 		if err.Error() == "challenge not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "challenge not found"})

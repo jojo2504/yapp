@@ -2,6 +2,7 @@ package challenges
 
 import (
 	"backend/api/types/challenge"
+	"backend/api/types/group"
 	"backend/api/types/problem"
 	"backend/api/types/submission"
 	"encoding/json"
@@ -50,6 +51,8 @@ type CreateChallengeRequest struct {
 	Language    string            `json:"language" binding:"required"`
 	StarterCode string            `json:"starter_code"`
 	TestCases   challenge.JSONText `json:"test_cases"`
+	Visibility  string            `json:"visibility"`
+	GroupIDs    []int64           `json:"group_ids"`
 }
 
 type UpdateChallengeRequest struct {
@@ -60,6 +63,8 @@ type UpdateChallengeRequest struct {
 	Language    *string            `json:"language"`
 	StarterCode *string            `json:"starter_code"`
 	TestCases   challenge.JSONText `json:"test_cases"`
+	Visibility  *string            `json:"visibility"`
+	GroupIDs    *[]int64           `json:"group_ids"`
 }
 
 // SubmitRequest carries only the student's source code — the language is
@@ -77,6 +82,43 @@ func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }
 
+// studentGroupIDs returns the set of group IDs the given student (by email)
+// belongs to.
+func (s *Service) studentGroupIDs(email string) (map[int64]bool, error) {
+	out := make(map[int64]bool)
+	if email == "" {
+		return out, nil
+	}
+	var groups []group.Group
+	if err := s.db.Find(&groups).Error; err != nil {
+		return nil, err
+	}
+	for _, g := range groups {
+		for _, member := range g.Students {
+			if strings.EqualFold(strings.TrimSpace(member), email) {
+				out[g.ID] = true
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
+// studentCanAccess reports whether a student may access the challenge: public
+// ("everyone"/unset) challenges are open to all; "groups" challenges require
+// membership in one of the listed groups.
+func studentCanAccess(c *challenge.Challenge, memberOf map[int64]bool) bool {
+	if c.Visibility != "groups" {
+		return true
+	}
+	for _, gid := range c.GroupIDs {
+		if memberOf[gid] {
+			return true
+		}
+	}
+	return false
+}
+
 // parseTestCases extracts the test cases from the challenge's JSON blob.
 func parseTestCases(raw challenge.JSONText) []ChallengeTestCase {
 	if len(raw) == 0 {
@@ -92,12 +134,20 @@ func parseTestCases(raw challenge.JSONText) []ChallengeTestCase {
 // Get returns the challenge. When hideTeacherFields is true (i.e. for Students),
 // validator source code is stripped from every test case — students only see
 // the title and visibility flag.
-func (s *Service) Get(id int64, hideTeacherFields bool) (*challenge.Challenge, error) {
+func (s *Service) Get(id int64, role, email string) (*challenge.Challenge, error) {
 	var c challenge.Challenge
 	if err := s.db.First(&c, id).Error; err != nil {
 		return nil, errors.New("challenge not found")
 	}
-	if hideTeacherFields {
+	if role == "Student" {
+		memberOf, err := s.studentGroupIDs(email)
+		if err != nil {
+			return nil, err
+		}
+		if !studentCanAccess(&c, memberOf) {
+			// Don't reveal the existence of a restricted challenge.
+			return nil, errors.New("challenge not found")
+		}
 		tcs := parseTestCases(c.TestCases)
 		for i := range tcs {
 			tcs[i].Validator = ""
@@ -111,9 +161,10 @@ func (s *Service) Get(id int64, hideTeacherFields bool) (*challenge.Challenge, e
 	return &c, nil
 }
 
-func (s *Service) List(userID int64, userRole string) ([]challenge.Challenge, error) {
+func (s *Service) List(userID int64, userRole, userEmail string) ([]challenge.Challenge, error) {
 	query := s.db.Model(&challenge.Challenge{})
-	// Teachers see only their own; Admins and Students see all
+	// Teachers see only their own; Admins and Students see all (Students are
+	// then filtered by visibility below).
 	if userRole == "Teacher" {
 		query = query.Where("created_by = ?", userID)
 	}
@@ -121,13 +172,34 @@ func (s *Service) List(userID int64, userRole string) ([]challenge.Challenge, er
 	if err := query.Order("id DESC").Find(&items).Error; err != nil {
 		return nil, err
 	}
-	return items, nil
+	if userRole != "Student" {
+		return items, nil
+	}
+	memberOf, err := s.studentGroupIDs(userEmail)
+	if err != nil {
+		return nil, err
+	}
+	visible := make([]challenge.Challenge, 0, len(items))
+	for _, c := range items {
+		if studentCanAccess(&c, memberOf) {
+			visible = append(visible, c)
+		}
+	}
+	return visible, nil
 }
 
 func (s *Service) Create(req CreateChallengeRequest, createdBy int64) (*challenge.Challenge, error) {
 	difficulty := req.Difficulty
 	if difficulty == "" {
 		difficulty = "Easy"
+	}
+	visibility := req.Visibility
+	if visibility != "groups" {
+		visibility = "everyone"
+	}
+	groupIDs := req.GroupIDs
+	if visibility != "groups" {
+		groupIDs = []int64{}
 	}
 	c := challenge.Challenge{
 		Title:       req.Title,
@@ -137,6 +209,8 @@ func (s *Service) Create(req CreateChallengeRequest, createdBy int64) (*challeng
 		Language:    req.Language,
 		StarterCode: req.StarterCode,
 		TestCases:   req.TestCases,
+		Visibility:  visibility,
+		GroupIDs:    groupIDs,
 		CreatedBy:   &createdBy,
 	}
 	if err := s.db.Create(&c).Error; err != nil {
@@ -178,6 +252,17 @@ func (s *Service) Update(id int64, req UpdateChallengeRequest, userID int64, use
 		// a per-element encoder for the map values inside.
 		updates["test_cases"] = string(req.TestCases)
 	}
+	if req.GroupIDs != nil {
+		updates["group_ids"] = *req.GroupIDs
+	}
+	if req.Visibility != nil {
+		vis := *req.Visibility
+		if vis != "groups" {
+			vis = "everyone"
+			updates["group_ids"] = []int64{} // public challenges carry no group list
+		}
+		updates["visibility"] = vis
+	}
 	if err := s.db.Model(&c).Updates(updates).Error; err != nil {
 		return nil, err
 	}
@@ -201,10 +286,19 @@ func (s *Service) Delete(id int64, userID int64, userRole string) error {
 // Submit creates a Pending submission for a challenge, embedding the test cases
 // inline so the judge can validate without a separate DB query.
 // Returns the created submission (caller must push it to Redis).
-func (s *Service) Submit(challengeID int64, req SubmitRequest, userID int64) (*submission.Submission, error) {
+func (s *Service) Submit(challengeID int64, req SubmitRequest, userID int64, userRole, userEmail string) (*submission.Submission, error) {
 	var c challenge.Challenge
 	if err := s.db.First(&c, challengeID).Error; err != nil {
 		return nil, errors.New("challenge not found")
+	}
+	if userRole == "Student" {
+		memberOf, err := s.studentGroupIDs(userEmail)
+		if err != nil {
+			return nil, err
+		}
+		if !studentCanAccess(&c, memberOf) {
+			return nil, errors.New("challenge not found")
+		}
 	}
 
 	testCases := parseTestCases(c.TestCases)

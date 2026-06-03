@@ -26,6 +26,8 @@ export interface TestCase {
   validator: string;
 }
 
+export type ChallengeVisibility = 'everyone' | 'groups';
+
 export interface Challenge {
   id: string;
   title: string;
@@ -35,6 +37,8 @@ export interface Challenge {
   language: Language;
   starterCode: string;
   testCases: TestCase[];
+  visibility: ChallengeVisibility;
+  groupIds: string[];
 }
 
 // ── API mapping ───────────────────────────────────────────────────────────────
@@ -48,6 +52,8 @@ interface ApiChallenge {
   language?: string;
   starter_code?: unknown;
   test_cases: unknown;
+  visibility?: string;
+  group_ids?: number[];
 }
 
 const STARTER_TEMPLATES: Record<Language, string> = {
@@ -149,6 +155,8 @@ function fromApi(raw: ApiChallenge): Challenge {
           validator: resolveValidator(tc.validator, tc.validators, language),
         }))
       : [],
+    visibility: raw.visibility === 'groups' ? 'groups' : 'everyone',
+    groupIds: (raw.group_ids ?? []).map(String),
   };
 }
 

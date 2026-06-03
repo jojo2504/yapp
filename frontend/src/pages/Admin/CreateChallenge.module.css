@@ -1,0 +1,655 @@
+/* ── Page shell ──────────────────────────────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem 2rem 4rem;
+}
+
+.loadingState {
+  padding: 4rem 0;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────── */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 9px;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+
+.backBtn:hover {
+  color: var(--text-primary);
+  background: var(--ruby-soft);
+  border-color: var(--border-divider-strong);
+}
+
+.topBarActions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* ── Page header ─────────────────────────────────────────────────── */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ruby);
+}
+
+.heading {
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.subheading {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 680px;
+}
+
+/* ── Section ─────────────────────────────────────────────────────── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(185, 53, 53, 0.06);
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.25rem;
+}
+
+.sectionTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.sectionHint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.sectionHint code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 5px;
+  background: var(--surface-input);
+  border: 1px solid var(--border-glass);
+  color: var(--ruby);
+}
+
+/* ── Generic fields ──────────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--surface-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.textarea {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.input::placeholder,
+.textarea::placeholder { color: var(--text-faint); }
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--ruby-border-strong);
+  box-shadow: 0 0 0 3px var(--ruby-tint);
+}
+
+/* ── Difficulty buttons ──────────────────────────────────────────── */
+.diffGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.diffBtn {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border-glass);
+  background: var(--surface-input);
+  color: var(--text-muted);
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.diffBtn_Easy:hover   { border-color: rgba(16,185,129,0.4); color: var(--emerald); background: rgba(16,185,129,0.06); }
+.diffBtn_Medium:hover { border-color: rgba(245,158,11,0.4); color: var(--amber);   background: rgba(245,158,11,0.06); }
+.diffBtn_Hard:hover   { border-color: rgba(239,68,68,0.4);  color: var(--ruby);    background: rgba(239,68,68,0.06);  }
+
+.diffBtnActiveEasy   { border-color: rgba(16,185,129,0.5); color: var(--emerald); background: rgba(16,185,129,0.1); }
+.diffBtnActiveMedium { border-color: rgba(245,158,11,0.5); color: var(--amber);   background: rgba(245,158,11,0.1); }
+.diffBtnActiveHard   { border-color: rgba(239,68,68,0.5);  color: var(--ruby);    background: rgba(239,68,68,0.1);  }
+
+/* ── Category select ─────────────────────────────────────────────── */
+.selectWrap { position: relative; }
+
+.selectWrap::after {
+  content: '';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--ruby);
+  pointer-events: none;
+}
+
+.select {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  appearance: none;
+  background: var(--surface-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.select:focus {
+  border-color: var(--ruby-border-strong);
+  box-shadow: 0 0 0 3px var(--ruby-tint);
+}
+
+/* ── Language tabs ───────────────────────────────────────────────── */
+.langTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  background: var(--surface-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  padding: 0.25rem;
+}
+
+.langTab {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s;
+}
+
+.langTab:hover:not(:disabled) { color: var(--text-secondary); }
+
+.langTab:disabled { cursor: not-allowed; opacity: 0.55; }
+
+.langTabActive {
+  color: #fff;
+  background: var(--ruby-gradient);
+  box-shadow: 0 4px 14px rgba(185, 53, 53, 0.25);
+}
+
+.langTabActive:disabled { opacity: 0.9; }
+
+/* ── Code editor ─────────────────────────────────────────────────── */
+.codeBlock {
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-glass-soft);
+}
+
+.editorWrap {
+  background: #1f1d1d;
+}
+
+/* ── Validator list ──────────────────────────────────────────────── */
+.btnAdd {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9px;
+  border: 1px dashed var(--ruby-border);
+  background: var(--ruby-soft);
+  color: var(--ruby);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, border-style 0.18s;
+}
+
+.btnAdd:hover {
+  background: var(--ruby-tint);
+  border-style: solid;
+}
+
+.emptyHint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 1.25rem;
+  text-align: center;
+  background: var(--surface-input);
+  border: 1px dashed var(--border-glass);
+  border-radius: 10px;
+}
+
+.testList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.testCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--surface-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+}
+
+.testCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.testNum {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  flex-shrink: 0;
+  min-width: 28px;
+}
+
+.testTitleInput {
+  flex: 1;
+  padding: 0.55rem 0.85rem;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.testTitleInput::placeholder { color: var(--text-faint); font-weight: 400; }
+.testTitleInput:focus {
+  border-color: var(--ruby-border-strong);
+  box-shadow: 0 0 0 3px var(--ruby-tint);
+}
+
+.btnHidden {
+  flex-shrink: 0;
+  padding: 0.32rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+
+.btnHidden:hover {
+  border-color: var(--text-muted);
+  color: var(--text-secondary);
+}
+
+.btnHiddenActive {
+  background: var(--amber-tint);
+  border-color: var(--amber-border);
+  color: var(--amber);
+}
+
+.btnRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+
+.btnRemove:hover {
+  color: var(--ruby);
+  background: var(--ruby-soft);
+  border-color: var(--ruby-border);
+}
+
+.testCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.testLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.testInput {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.18s;
+}
+
+.testInput::placeholder { color: var(--text-faint); }
+.testInput:focus { border-color: var(--ruby-border); }
+
+/* ── Footer bar ──────────────────────────────────────────────────── */
+.footerBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  box-shadow: 0 -10px 30px rgba(185, 53, 53, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── Error banner ────────────────────────────────────────────────── */
+.errorBanner {
+  padding: 0.85rem 1.1rem;
+  background: var(--ruby-soft);
+  border: 1px solid var(--ruby-border);
+  border-radius: 10px;
+  color: var(--ruby);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btnSecondary {
+  padding: 0.65rem 1.3rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: var(--ruby-soft);
+  border-color: var(--border-divider-strong);
+}
+
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  padding: 0.65rem 1.5rem;
+  border-radius: 10px;
+  border: none;
+  background: var(--ruby-gradient);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--ruby-border);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .page { padding: 1.25rem 1rem 3rem; }
+  .section { padding: 1.25rem; }
+  .row2 { grid-template-columns: 1fr; }
+  .langTab { min-width: 0; padding: 0.55rem 0.6rem; font-size: 0.78rem; }
+  .testCardHeader { flex-wrap: wrap; }
+  .testTitleInput { order: 3; width: 100%; flex-basis: 100%; }
+  .topBar { flex-wrap: wrap; }
+}
+
+/* ── Access section ──────────────────────────────────────────────── */
+.labelCount {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.accessToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.accessOption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+  padding: 0.9rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-glass);
+  background: var(--surface-input);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.accessOption:hover {
+  border-color: var(--border-divider-strong);
+}
+
+.accessOptionActive,
+.accessOptionActive:hover {
+  border-color: var(--ruby-border-strong);
+  background: var(--ruby-soft);
+}
+
+.accessOptionTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.accessOptionDesc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.groupList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 0.625rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(192, 86, 74, 0.3) transparent;
+}
+
+.groupList::-webkit-scrollbar { width: 5px; }
+.groupList::-webkit-scrollbar-thumb { background: var(--surface-glass); border-radius: 3px; }
+
+.groupItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.875rem;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.groupItem:hover { background: var(--ruby-soft); }
+
+.groupItemChecked,
+.groupItemChecked:hover {
+  background: var(--ruby-soft);
+  border-color: var(--ruby-border);
+}
+
+.groupCheckbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  accent-color: var(--ruby);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.groupName {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCount {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .accessToggle { grid-template-columns: 1fr; }
+}

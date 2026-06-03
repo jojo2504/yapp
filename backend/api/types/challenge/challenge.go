@@ -75,7 +75,11 @@ type Challenge struct {
 	Language    string   `json:"language" gorm:"size:50;not null;default:'python'"`
 	StarterCode string   `json:"starter_code" gorm:"type:text"`
 	TestCases   JSONText `json:"test_cases" gorm:"column:test_cases;type:text"`
-	CreatedBy   *int64   `json:"created_by,omitempty" gorm:"index"`
+	// Visibility controls who can access the challenge: "everyone" (default) or
+	// "groups" (only students in GroupIDs). Teachers/Admins always see their own.
+	Visibility string  `json:"visibility" gorm:"size:20;default:'everyone'"`
+	GroupIDs   []int64 `json:"group_ids" gorm:"serializer:json;column:group_ids;type:text"`
+	CreatedBy  *int64  `json:"created_by,omitempty" gorm:"index"`
 }
 
 func (Challenge) TableName() string { return "challenges" }
