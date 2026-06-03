@@ -17,9 +17,17 @@ interface GroupOption {
   studentCount: number;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+interface ApiChallenge {
+  id: number;
+  title: string;
+}
 
-const AVAILABLE_CHALLENGES: { id: string; title: string }[] = [];
+interface ChallengeOption {
+  id: string;
+  title: string;
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
@@ -161,11 +169,13 @@ function MCQEditor({ q, index, onChange, onRemove }: MCQEditorProps) {
 interface CodingEditorProps {
   q: CodingQuestion;
   index: number;
+  challenges: ChallengeOption[];
+  challengesLoading: boolean;
   onChange: (q: CodingQuestion) => void;
   onRemove: () => void;
 }
 
-function CodingEditor({ q, index, onChange, onRemove }: CodingEditorProps) {
+function CodingEditor({ q, index, challenges, challengesLoading, onChange, onRemove }: CodingEditorProps) {
   return (
     <div className={styles.questionCard}>
       <div className={styles.questionCardHeader}>
@@ -185,12 +195,22 @@ function CodingEditor({ q, index, onChange, onRemove }: CodingEditorProps) {
             className={styles.select}
             value={q.challengeId}
             onChange={e => {
-              const challenge = AVAILABLE_CHALLENGES.find(c => c.id === e.target.value);
+              const challenge = challenges.find(c => c.id === e.target.value);
               onChange({ ...q, challengeId: e.target.value, challengeTitle: challenge?.title ?? '' });
             }}
           >
-            <option value="">— Select a challenge —</option>
-            {AVAILABLE_CHALLENGES.map(c => (
+            <option value="">
+              {challengesLoading
+                ? 'Loading challenges…'
+                : challenges.length === 0
+                  ? '— No challenges available —'
+                  : '— Select a challenge —'}
+            </option>
+            {/* Keep the linked challenge selectable even if it's not in the list. */}
+            {q.challengeId && !challenges.some(c => c.id === q.challengeId) && (
+              <option value={q.challengeId}>{q.challengeTitle || `Challenge ${q.challengeId}`}</option>
+            )}
+            {challenges.map(c => (
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
@@ -214,6 +234,8 @@ export default function ExamModal({ initial, onClose, onSave }: Props) {
   const [error, setError]     = useState('');
   const [groups, setGroups]         = useState<GroupOption[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [challenges, setChallenges] = useState<ChallengeOption[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
 
   const handleEsc = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
@@ -242,6 +264,19 @@ export default function ExamModal({ initial, onClose, onSave }: Props) {
       })
       .catch(() => { if (!cancelled) setGroups([]); })
       .finally(() => { if (!cancelled) setGroupsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChallengesLoading(true);
+    apiFetch<ApiChallenge[]>('/api/challenges')
+      .then(data => {
+        if (cancelled) return;
+        setChallenges(data.map(c => ({ id: String(c.id), title: c.title ?? `Challenge ${c.id}` })));
+      })
+      .catch(() => { if (!cancelled) setChallenges([]); })
+      .finally(() => { if (!cancelled) setChallengesLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -478,6 +513,8 @@ export default function ExamModal({ initial, onClose, onSave }: Props) {
                     key={q.id}
                     q={q}
                     index={i}
+                    challenges={challenges}
+                    challengesLoading={challengesLoading}
                     onChange={updated => updateQuestion(q.id, updated)}
                     onRemove={() => removeQuestion(q.id)}
                   />
